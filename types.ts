@@ -22,6 +22,7 @@ export interface FoodLogItem extends FoodAnalysisResult {
 }
 
 export enum AppView {
+  LAUNCH = 'LAUNCH',
   DASHBOARD = 'DASHBOARD',
   CAMERA = 'CAMERA',
   ANALYSIS = 'ANALYSIS',

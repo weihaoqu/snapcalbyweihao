@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { analyzeFoodImage } from './services/gemini';
 import { MacroSummary } from './components/MacroCharts';
 import { CameraInput } from './components/CameraInput';
 import { AppView, FoodAnalysisResult, FoodLogItem, DailyGoals } from './types';
-import { Plus, Camera, ChevronLeft, Check, Loader2, Utensils } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Check, Loader2, Utensils, Calendar, ArrowRight, Sparkles } from 'lucide-react';
 
 // Default Goals
 const DEFAULT_GOALS: DailyGoals = {
@@ -15,11 +15,12 @@ const DEFAULT_GOALS: DailyGoals = {
 
 const App: React.FC = () => {
   // State
-  const [view, setView] = useState<AppView>(AppView.DASHBOARD);
+  const [view, setView] = useState<AppView>(AppView.LAUNCH);
   const [logs, setLogs] = useState<FoodLogItem[]>([]);
   const [currentImage, setCurrentImage] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<FoodAnalysisResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   
   // Load logs from local storage on mount
   useEffect(() => {
@@ -33,6 +34,24 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('snapcalorie_logs', JSON.stringify(logs));
   }, [logs]);
+
+  // Helper to check if two dates are the same calendar day
+  const isSameDay = (d1: Date, d2: Date) => {
+    return d1.getDate() === d2.getDate() &&
+           d1.getMonth() === d2.getMonth() &&
+           d1.getFullYear() === d2.getFullYear();
+  };
+
+  // Filter logs for the selected date
+  const dailyLogs = logs.filter(log => isSameDay(new Date(log.timestamp), selectedDate));
+  const isToday = isSameDay(selectedDate, new Date());
+
+  // Navigation handler
+  const navigateDate = (days: number) => {
+    const newDate = new Date(selectedDate);
+    newDate.setDate(newDate.getDate() + days);
+    setSelectedDate(newDate);
+  };
 
   // Handler: Process captured image
   const handleImageCapture = async (imageData: string) => {
@@ -68,39 +87,111 @@ const App: React.FC = () => {
       };
       setLogs(prev => [newLog, ...prev]);
       setView(AppView.DASHBOARD);
+      setSelectedDate(new Date()); // Reset to today to see the new entry
       setCurrentImage(null);
       setAnalysisResult(null);
     }
   };
 
+  // View: Launch Screen
+  const renderLaunchScreen = () => (
+    <div className="h-full flex flex-col items-center justify-center bg-gradient-to-br from-indigo-600 via-purple-600 to-violet-600 text-white p-8 relative overflow-hidden">
+        {/* Decorative elements */}
+        <div className="absolute top-[-20%] left-[-20%] w-96 h-96 bg-white/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-80 h-80 bg-black/10 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/4 right-0 w-32 h-32 bg-pink-500/20 rounded-full blur-2xl"></div>
+
+        <div className="flex flex-col items-center z-10 text-center max-w-sm mx-auto">
+            <div className="relative">
+              <div className="w-28 h-28 bg-white rounded-3xl flex items-center justify-center shadow-2xl shadow-indigo-900/20 mb-8 rotate-6 transform transition hover:rotate-0 duration-500 ease-out">
+                  <span className="text-indigo-600 font-bold text-5xl tracking-tighter">SC</span>
+              </div>
+              <div className="absolute -right-4 -top-4 bg-yellow-400 text-yellow-900 p-2 rounded-full shadow-lg animate-bounce">
+                  <Sparkles size={20} />
+              </div>
+            </div>
+            
+            <h1 className="text-5xl font-bold mb-3 tracking-tight drop-shadow-md">SnapCalorie</h1>
+            <p className="text-indigo-100 text-lg mb-12 leading-relaxed font-light opacity-90">
+                Your personal AI nutritionist. <br/>
+                <span className="font-medium">Snap. Track. Thrive.</span>
+            </p>
+
+            <button 
+                onClick={() => setView(AppView.DASHBOARD)}
+                className="group bg-white text-indigo-600 px-10 py-4 rounded-full font-bold text-lg shadow-xl shadow-indigo-900/30 flex items-center gap-3 hover:scale-105 active:scale-95 transition-all duration-300"
+            >
+                Get Started
+                <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+            </button>
+        </div>
+
+        <div className="absolute bottom-8 text-indigo-200/60 text-xs font-medium">
+            Powered by Gemini 2.5 Flash
+        </div>
+    </div>
+  );
+
   // View: Dashboard
   const renderDashboard = () => (
     <div className="pb-24">
-      <header className="mb-6 flex justify-between items-center">
-        <div>
-            <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Today</h1>
-            <p className="text-slate-500 font-medium">{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+      <header className="mb-6">
+        <div className="flex justify-between items-center mb-6">
+           <div className="flex items-center gap-2">
+              <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg shadow-indigo-200">
+                 SC
+              </div>
+              <span className="font-bold text-slate-700 tracking-tight text-lg">SnapCalorie</span>
+           </div>
         </div>
-        <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold">
-            SC
+
+        {/* Date Navigation */}
+        <div className="flex items-center justify-between bg-white p-1 rounded-2xl border border-slate-100 shadow-sm mb-2">
+           <button 
+             onClick={() => navigateDate(-1)} 
+             className="p-3 hover:bg-slate-50 text-slate-500 rounded-xl transition"
+             aria-label="Previous day"
+           >
+             <ChevronLeft size={20} />
+           </button>
+           
+           <div className="flex flex-col items-center">
+              <h2 className="text-lg font-bold text-slate-800 leading-tight">
+                 {isToday ? 'Today' : selectedDate.toLocaleDateString(undefined, { weekday: 'long' })}
+              </h2>
+              <p className="text-xs text-slate-400 font-medium">
+                 {selectedDate.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}
+              </p>
+           </div>
+
+           <button 
+             onClick={() => navigateDate(1)}
+             disabled={isToday}
+             className={`p-3 rounded-xl transition ${isToday ? 'text-slate-200 cursor-not-allowed' : 'hover:bg-slate-50 text-slate-500'}`}
+             aria-label="Next day"
+           >
+             <ChevronRight size={20} />
+           </button>
         </div>
       </header>
 
-      <MacroSummary logs={logs} goals={DEFAULT_GOALS} />
+      <MacroSummary logs={dailyLogs} goals={DEFAULT_GOALS} />
 
       <div className="mb-6">
-        <h2 className="text-xl font-semibold text-slate-800 mb-4">Recent Meals</h2>
-        {logs.length === 0 ? (
+        <h2 className="text-xl font-semibold text-slate-800 mb-4">
+            {isToday ? 'Recent Meals' : 'Meals History'}
+        </h2>
+        {dailyLogs.length === 0 ? (
             <div className="bg-white rounded-3xl p-8 text-center border border-slate-100 shadow-sm">
                 <div className="w-16 h-16 bg-indigo-50 text-indigo-400 rounded-full flex items-center justify-center mx-auto mb-4">
                     <Utensils size={32} />
                 </div>
-                <p className="text-slate-500">No meals tracked today yet.</p>
-                <p className="text-slate-400 text-sm mt-1">Tap the + button to start.</p>
+                <p className="text-slate-500">No meals tracked for this day.</p>
+                {isToday && <p className="text-slate-400 text-sm mt-1">Tap the + button to start.</p>}
             </div>
         ) : (
             <div className="space-y-4">
-                {logs.map((log) => (
+                {dailyLogs.map((log) => (
                     <div key={log.id} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex gap-4 items-center">
                         <img src={log.imageUrl} alt={log.foodName} className="w-20 h-20 rounded-xl object-cover flex-shrink-0 bg-slate-100" />
                         <div className="flex-1 min-w-0">
@@ -196,9 +287,15 @@ const App: React.FC = () => {
     <div className="max-w-md mx-auto min-h-screen bg-slate-50 relative shadow-2xl overflow-hidden">
       
       {/* Main Content Area */}
-      <main className="h-full overflow-y-auto px-6 pt-8 scrollbar-hide">
-        {view === AppView.DASHBOARD && renderDashboard()}
-        {view === AppView.ANALYSIS && renderAnalysis()}
+      <main className="h-full overflow-y-auto scrollbar-hide">
+        {view === AppView.LAUNCH && renderLaunchScreen()}
+        
+        {view !== AppView.LAUNCH && (
+            <div className="px-6 pt-8 h-full">
+                 {view === AppView.DASHBOARD && renderDashboard()}
+                 {view === AppView.ANALYSIS && renderAnalysis()}
+            </div>
+        )}
       </main>
 
       {/* Sticky Action Button (Dashboard Only) */}
