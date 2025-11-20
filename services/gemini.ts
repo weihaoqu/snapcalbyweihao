@@ -22,7 +22,7 @@ export const analyzeFoodImage = async (base64Image: string, mimeType: string): P
             },
           },
           {
-            text: "Analyze this image of food. Identify the main dish or items. Estimate the total calories and macronutrients (protein, carbs, fat) for the visible portion. Provide a short, appetizing description. Be realistic with portion sizes. If the image is not food, set the foodName to 'Unknown' and values to 0.",
+            text: "Analyze this image of food. Identify the main dish or items. Estimate the total calories, macronutrients (protein, carbs, fat), and detailed nutrients (sugar, fiber, sodium, potassium, cholesterol) for the visible portion. Provide a short, appetizing description. Be realistic with portion sizes. If the image is not food, set the foodName to 'Unknown' and values to 0.",
           },
         ],
       },
@@ -55,8 +55,28 @@ export const analyzeFoodImage = async (base64Image: string, mimeType: string): P
               type: Type.INTEGER,
               description: "Estimated fat in grams.",
             },
+            sugar: {
+              type: Type.INTEGER,
+              description: "Estimated sugar in grams.",
+            },
+            fiber: {
+              type: Type.INTEGER,
+              description: "Estimated dietary fiber in grams.",
+            },
+            sodium: {
+              type: Type.INTEGER,
+              description: "Estimated sodium in milligrams.",
+            },
+            potassium: {
+              type: Type.INTEGER,
+              description: "Estimated potassium in milligrams.",
+            },
+            cholesterol: {
+              type: Type.INTEGER,
+              description: "Estimated cholesterol in milligrams.",
+            },
           },
-          required: ["foodName", "calories", "protein", "carbs", "fat", "description"],
+          required: ["foodName", "calories", "protein", "carbs", "fat", "sugar", "fiber", "sodium", "potassium", "cholesterol", "description"],
         },
       },
     });

@@ -12,6 +12,11 @@ export interface FoodAnalysisResult {
   protein: number; // grams
   carbs: number;   // grams
   fat: number;     // grams
+  sugar: number;   // grams
+  fiber: number;   // grams
+  sodium: number;  // mg
+  potassium: number; // mg
+  cholesterol: number; // mg
   confidenceScore?: number;
 }
 
@@ -33,4 +38,9 @@ export interface DailyGoals {
   protein: number;
   carbs: number;
   fat: number;
+  sugar: number;   // grams
+  fiber: number;   // grams
+  sodium: number;  // mg
+  potassium: number; // mg
+  cholesterol: number; // mg
 }
