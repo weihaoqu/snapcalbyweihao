@@ -1,0 +1,7 @@
+{
+  "name": "SnapCalorie",
+  "description": "AI-powered food tracker. Snap a photo of your meal to instantly analyze calories and macronutrients using Gemini Vision.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

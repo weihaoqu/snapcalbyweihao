@@ -1,0 +1,35 @@
+export interface MacroData {
+  name: string;
+  value: number;
+  fill: string;
+  unit: string;
+}
+
+export interface FoodAnalysisResult {
+  foodName: string;
+  description: string;
+  calories: number;
+  protein: number; // grams
+  carbs: number;   // grams
+  fat: number;     // grams
+  confidenceScore?: number;
+}
+
+export interface FoodLogItem extends FoodAnalysisResult {
+  id: string;
+  timestamp: number;
+  imageUrl: string;
+}
+
+export enum AppView {
+  DASHBOARD = 'DASHBOARD',
+  CAMERA = 'CAMERA',
+  ANALYSIS = 'ANALYSIS',
+}
+
+export interface DailyGoals {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
