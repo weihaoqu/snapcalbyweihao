@@ -9,12 +9,44 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
  * @param base64Image The base64 encoded string of the image (without data:image/... prefix)
  * @param mimeType The mime type of the image (e.g., 'image/jpeg')
  * @param frequentSports Optional list of user's preferred sports to prioritize in suggestions
+ * @param analysisType Whether to analyze as general 'food' or specifically a 'drink'
  */
-export const analyzeFoodImage = async (base64Image: string, mimeType: string, frequentSports: string[] = []): Promise<FoodAnalysisResult> => {
+export const analyzeFoodImage = async (
+  base64Image: string, 
+  mimeType: string, 
+  frequentSports: string[] = [],
+  analysisType: 'food' | 'drink' = 'food'
+): Promise<FoodAnalysisResult> => {
   try {
     const sportsContext = frequentSports.length > 0 
       ? `For the exercise suggestions, please prioritize these activities if appropriate: ${frequentSports.join(', ')}. Fill remaining slots with other common exercises.` 
       : "Provide 3 different exercise suggestions (e.g., Running, Swimming, Cycling, Walking).";
+
+    let promptText = "";
+
+    if (analysisType === 'drink') {
+        promptText = `Analyze this beverage image. Identify the drink (e.g., Latte, Soda, Juice, Smoothie, Beer, Water).
+        
+        CRITICAL: Estimate the volume in milliliters (ml) based on the container size (cup, mug, bottle, glass). 
+        
+        Estimate calories and nutrients (sugar is very important for drinks). 
+        If it's plain water, calories/sugar/macros are 0. 
+        If it's a sugary drink (soda, juice), sugar should be high.
+        If it's coffee/tea without milk/sugar, calories are near 0.
+        
+        Provide a short description (e.g., "Medium Iced Latte").
+        Set 'quantityUnit' to 'ml' and 'itemCount' to the estimated volume (e.g. 350).
+        
+        ${sportsContext} Provide estimated duration to burn these calories.`;
+    } else {
+        promptText = `Analyze this image of food or drink. Identify the main dish or items. Estimate the total calories, macronutrients (protein, carbs, fat), and detailed nutrients (sugar, fiber, sodium, potassium, cholesterol) for the visible portion. 
+            
+        CRITICAL: Estimate the water content in milliliters (ml). For drinks (tea, coffee, juice), this should be high. For solid foods (watermelon, soup, oatmeal), estimate the water contained. For dry foods, it will be low.
+
+        If the food is distinct and countable (e.g., 2 slices of pizza, 3 cookies, 1 chocolate bar), specifically identify the 'itemCount' seen in the image and the 'quantityUnit' (e.g., 'slice', 'cookie', 'bar'). If it's a single dish or amorphous (e.g., bowl of soup, plate of pasta), set 'itemCount' to 1 and 'quantityUnit' to 'serving' or 'bowl'.
+
+        Provide a short, appetizing description. Be realistic with portion sizes. ${sportsContext} Provide the estimated duration in minutes required for an average adult to burn these specific calories. If the image is not food, set the foodName to 'Unknown' and values to 0.`;
+    }
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
@@ -27,11 +59,7 @@ export const analyzeFoodImage = async (base64Image: string, mimeType: string, fr
             },
           },
           {
-            text: `Analyze this image of food. Identify the main dish or items. Estimate the total calories, macronutrients (protein, carbs, fat), and detailed nutrients (sugar, fiber, sodium, potassium, cholesterol) for the visible portion. 
-            
-            If the food is distinct and countable (e.g., 2 slices of pizza, 3 cookies, 1 chocolate bar), specifically identify the 'itemCount' seen in the image and the 'quantityUnit' (e.g., 'slice', 'cookie', 'bar'). If it's a single dish or amorphous (e.g., bowl of soup, plate of pasta), set 'itemCount' to 1 and 'quantityUnit' to 'serving' or 'bowl'.
-
-            Provide a short, appetizing description. Be realistic with portion sizes. ${sportsContext} Provide the estimated duration in minutes required for an average adult to burn these specific calories. If the image is not food, set the foodName to 'Unknown' and values to 0.`,
+            text: promptText,
           },
         ],
       },
@@ -92,6 +120,10 @@ export const analyzeFoodImage = async (base64Image: string, mimeType: string, fr
               type: Type.INTEGER,
               description: "Estimated cholesterol in milligrams.",
             },
+            water: {
+              type: Type.INTEGER,
+              description: "Estimated water content in milliliters (ml).",
+            },
             exerciseSuggestions: {
               type: Type.ARRAY,
               description: "3 suggestions for exercises to burn off these calories.",
@@ -105,7 +137,7 @@ export const analyzeFoodImage = async (base64Image: string, mimeType: string, fr
               }
             }
           },
-          required: ["foodName", "calories", "protein", "carbs", "fat", "sugar", "fiber", "sodium", "potassium", "cholesterol", "description", "exerciseSuggestions"],
+          required: ["foodName", "calories", "protein", "carbs", "fat", "sugar", "fiber", "sodium", "potassium", "cholesterol", "water", "description", "exerciseSuggestions"],
         },
       },
     });

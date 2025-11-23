@@ -24,6 +24,7 @@ export interface FoodAnalysisResult {
   sodium: number;  // mg
   potassium: number; // mg
   cholesterol: number; // mg
+  water: number;   // ml (milliliters)
   quantityUnit?: string; // e.g. "slice", "piece", "bar", "bowl"
   itemCount?: number;    // e.g. 2 (if the image contains 2 slices)
   exerciseSuggestions: ExerciseSuggestion[];
@@ -68,4 +69,5 @@ export interface DailyGoals {
   sodium: number;  // mg
   potassium: number; // mg
   cholesterol: number; // mg
+  water: number;   // ml
 }

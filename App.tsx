@@ -3,7 +3,7 @@ import { analyzeFoodImage } from './services/gemini';
 import { CalorieCard, MacroCard } from './components/MacroCharts';
 import { CameraInput } from './components/CameraInput';
 import { AppView, FoodAnalysisResult, FoodLogItem, ExerciseLogItem, DailyGoals, GoalType } from './types';
-import { Plus, ChevronLeft, ChevronRight, Check, Loader2, Utensils, ArrowRight, Sparkles, AlertTriangle, AlertOctagon, Settings, X, Sliders, Flame, Timer, Bike, Waves, Footprints, Dumbbell, Lightbulb, Activity, Mountain, Trophy, Wind, Swords, Target, TrendingDown, TrendingUp, Minus, Scale, PieChart, Zap, Calendar, Trash2, Hash, Camera, Upload, Edit2, Save, Share, PlusSquare, MoreVertical, Download } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Check, Loader2, Utensils, ArrowRight, Sparkles, AlertTriangle, AlertOctagon, Settings, X, Sliders, Flame, Timer, Bike, Waves, Footprints, Dumbbell, Lightbulb, Activity, Mountain, Trophy, Wind, Swords, Target, TrendingDown, TrendingUp, Minus, Scale, PieChart, Zap, Calendar, Trash2, Hash, Camera, Upload, Edit2, Save, Share, PlusSquare, MoreVertical, Download, Droplets, GlassWater } from 'lucide-react';
 
 // Default Goals (Fallback if no weight is set)
 const DEFAULT_GOALS: DailyGoals = {
@@ -16,6 +16,7 @@ const DEFAULT_GOALS: DailyGoals = {
   sodium: 2300, // mg
   potassium: 3500, // mg
   cholesterol: 300, // mg
+  water: 2500, // ml
 };
 
 // Sports with MET (Metabolic Equivalent) values for calorie calculation
@@ -59,6 +60,7 @@ const App: React.FC = () => {
   const [currentImage, setCurrentImage] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<FoodAnalysisResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisType, setAnalysisType] = useState<'food' | 'drink'>('food'); // Track whether scanning food or drink
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   
   // Portion Control State
@@ -86,6 +88,7 @@ const App: React.FC = () => {
   const [tempTargetMonths, setTempTargetMonths] = useState<string>('');
   const [tempSports, setTempSports] = useState<string[]>([]);
   const [tempBurnGoal, setTempBurnGoal] = useState<string>('');
+  const [tempWaterGoal, setTempWaterGoal] = useState<string>('');
   const [tempCoachName, setTempCoachName] = useState<string>('');
   const [tempCoachImage, setTempCoachImage] = useState<string>('');
   const [settingError, setSettingError] = useState<string>('');
@@ -99,6 +102,10 @@ const App: React.FC = () => {
   // Quick Add Modal State
   const [quickAddModal, setQuickAddModal] = useState<{ isOpen: boolean, meal: typeof QUICK_MEALS[0] | null }>({ isOpen: false, meal: null });
   const [quickAddQuantity, setQuickAddQuantity] = useState<number>(1);
+
+  // Custom Water Modal State
+  const [isWaterModalOpen, setIsWaterModalOpen] = useState(false);
+  const [customWaterAmount, setCustomWaterAmount] = useState<string>('');
 
   // Edit States
   const [editingFoodLog, setEditingFoodLog] = useState<FoodLogItem | null>(null);
@@ -238,6 +245,9 @@ const App: React.FC = () => {
     const calculatedProtein = Math.round(weight * proteinMultiplier);
     const calculatedFat = Math.round((targetCalories * fatMultiplier) / 9);
     const calculatedCarbs = Math.max(0, Math.round((targetCalories - (calculatedProtein * 4) - (calculatedFat * 9)) / 4));
+    
+    // Water calc: approx 16ml per lb or 35ml per kg
+    const calculatedWater = Math.round(weight * 18);
 
     return {
       ...DEFAULT_GOALS,
@@ -245,6 +255,7 @@ const App: React.FC = () => {
       protein: calculatedProtein,
       carbs: calculatedCarbs,
       fat: calculatedFat,
+      water: calculatedWater
     };
   };
 
@@ -271,13 +282,15 @@ const App: React.FC = () => {
     sodium: (acc.sodium || 0) + (log.sodium || 0),
     potassium: (acc.potassium || 0) + (log.potassium || 0),
     cholesterol: (acc.cholesterol || 0) + (log.cholesterol || 0),
-  }), { ...currentGoals, calories: 0, protein: 0, carbs: 0, fat: 0, sugar: 0, fiber: 0, sodium: 0, potassium: 0, cholesterol: 0 });
+    water: (acc.water || 0) + (log.water || 0),
+  }), { ...currentGoals, calories: 0, protein: 0, carbs: 0, fat: 0, sugar: 0, fiber: 0, sodium: 0, potassium: 0, cholesterol: 0, water: 0 });
 
   const totalCaloriesBurned = dailyExercises.reduce((sum, log) => sum + log.caloriesBurned, 0);
   const effectiveCalorieGoal = currentGoals.calories + totalCaloriesBurned;
 
   const dailyAlerts: string[] = [];
   (Object.keys(currentGoals) as Array<keyof DailyGoals>).forEach(key => {
+     if (key === 'water') return; // Don't alert for over-drinking water usually
      const goal = key === 'calories' ? effectiveCalorieGoal : currentGoals[key];
      if (dailyTotals[key] > goal * 2) {
         dailyAlerts.push(`${key.charAt(0).toUpperCase() + key.slice(1)}`);
@@ -289,6 +302,7 @@ const App: React.FC = () => {
     const proteinPct = dailyTotals.protein / (currentGoals.protein || 1);
     const carbsPct = dailyTotals.carbs / (currentGoals.carbs || 1);
     const fatPct = dailyTotals.fat / (currentGoals.fat || 1);
+    const waterPct = dailyTotals.water / (currentGoals.water || 1);
     
     const caloriesRemaining = effectiveCalorieGoal - dailyTotals.calories;
     const proteinRemaining = Math.max(0, currentGoals.protein - dailyTotals.protein);
@@ -296,7 +310,10 @@ const App: React.FC = () => {
     let workout = { title: "Stay Active", desc: "Movement is medicine. Keep it up!", icon: <Activity className="text-indigo-500" size={20} /> };
     let food = { title: "Balance Macros", desc: "Try to hit your nutrient targets for the day.", icon: <Utensils className="text-blue-500" size={20} /> };
 
-    if (goalType === GoalType.LOSE_WEIGHT) {
+    // Water advice overrides if dehydration is likely
+    if (waterPct < 0.2 && new Date().getHours() > 12) {
+       food = { title: "Hydrate!", desc: `You're behind on water. Drink a glass now to boost metabolism.`, icon: <Droplets className="text-cyan-500" size={20} /> };
+    } else if (goalType === GoalType.LOSE_WEIGHT) {
         if (caloriesRemaining < -100) {
             food = { title: "Over Calorie Limit", desc: `You're ${Math.abs(caloriesRemaining)} kcal over. Stick to water, herbal tea, and leafy greens.`, icon: <AlertTriangle className="text-red-500" size={20} /> };
         } else if (caloriesRemaining < 100 && (new Date().getHours() < 18)) {
@@ -355,6 +372,11 @@ const App: React.FC = () => {
     setSelectedDate(newDate);
   };
 
+  const startAnalysis = (type: 'food' | 'drink') => {
+      setAnalysisType(type);
+      setView(AppView.CAMERA);
+  };
+
   const handleImageCapture = async (imageData: string) => {
     setCurrentImage(imageData);
     setView(AppView.ANALYSIS);
@@ -367,7 +389,7 @@ const App: React.FC = () => {
     try {
       const base64Data = imageData.split(',')[1];
       const mimeType = imageData.match(/:(.*?);/)?.[1] || 'image/jpeg';
-      const result = await analyzeFoodImage(base64Data, mimeType, frequentSports);
+      const result = await analyzeFoodImage(base64Data, mimeType, frequentSports, analysisType);
       setAnalysisResult(result);
       if (result.itemCount && result.itemCount > 0) {
         setCountValue(result.itemCount);
@@ -401,6 +423,7 @@ const App: React.FC = () => {
       sodium: Math.round(analysisResult.sodium * effectiveMultiplier),
       potassium: Math.round(analysisResult.potassium * effectiveMultiplier),
       cholesterol: Math.round(analysisResult.cholesterol * effectiveMultiplier),
+      water: Math.round(analysisResult.water * effectiveMultiplier),
   } : null;
 
   const confirmEntry = () => {
@@ -450,11 +473,38 @@ const App: React.FC = () => {
           carbs: Math.round(meal.carbs * multiplier),
           fat: Math.round(meal.fat * multiplier),
           sugar: 0, fiber: 0, sodium: 0, potassium: 0, cholesterol: 0,
+          water: 0, // Quick meals currently don't have water data in array
           exerciseSuggestions: []
     };
     setLogs(prev => [newLog, ...prev]);
     setQuickAddModal({ isOpen: false, meal: null });
   };
+
+  // Quick Add Water Logic
+  const addWaterLog = (amountMl: number, label: string) => {
+    const newLog: FoodLogItem = {
+          id: Date.now().toString(),
+          timestamp: Date.now(),
+          imageUrl: '',
+          foodName: label,
+          description: 'Water intake',
+          calories: 0,
+          protein: 0, carbs: 0, fat: 0,
+          sugar: 0, fiber: 0, sodium: 0, potassium: 0, cholesterol: 0,
+          water: amountMl,
+          exerciseSuggestions: []
+    };
+    setLogs(prev => [newLog, ...prev]);
+  }
+
+  const addCustomWaterLog = () => {
+      const amount = parseInt(customWaterAmount);
+      if (amount > 0) {
+          addWaterLog(amount, `Water (${amount}ml)`);
+          setIsWaterModalOpen(false);
+          setCustomWaterAmount('');
+      }
+  }
 
   // Exercise Logic
   const calculateBurnedCalories = (sportId: string, minutes: number) => {
@@ -541,6 +591,7 @@ const App: React.FC = () => {
     setTempTargetLbs(targetLbs.toString());
     setTempTargetMonths(targetMonths.toString());
     setTempBurnGoal(burnGoal.toString());
+    setTempWaterGoal(currentGoals.water.toString());
     setTempCoachName(coachName);
     setTempCoachImage(coachImage);
     setSettingError('');
@@ -743,7 +794,7 @@ const App: React.FC = () => {
       <div className="grid grid-cols-1 gap-6 mb-6">
         <CalorieCard consumed={dailyTotals.calories} goal={effectiveCalorieGoal} />
         <button 
-            onClick={() => setView(AppView.CAMERA)}
+            onClick={() => startAnalysis('food')}
             className="w-full bg-indigo-600 text-white p-4 rounded-3xl flex items-center justify-center gap-3 font-bold shadow-xl shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95 text-lg group"
         >
             <div className="bg-white/20 p-2 rounded-full group-hover:bg-white/30 transition">
@@ -752,6 +803,47 @@ const App: React.FC = () => {
             <span>Log New Meal</span>
         </button>
         <MacroCard totals={dailyTotals} goals={currentGoals} />
+      </div>
+
+      {/* Water / Hydration Section */}
+      <div className="mb-6 bg-cyan-50 p-5 rounded-3xl shadow-sm border border-cyan-100 relative overflow-hidden">
+         <div className="relative z-10">
+            <div className="flex justify-between items-center mb-4">
+                <div>
+                    <h3 className="text-lg font-semibold text-cyan-900 flex items-center gap-2"><Droplets size={20} className="fill-cyan-500 text-cyan-500"/> Hydration</h3>
+                    <p className="text-xs text-cyan-600">Daily Goal: {currentGoals.water} ml</p>
+                </div>
+                <div className="text-right">
+                    <p className="text-2xl font-bold text-cyan-800">{dailyTotals.water} <span className="text-sm font-medium text-cyan-600">ml</span></p>
+                </div>
+            </div>
+            <div className="w-full bg-cyan-200 rounded-full h-4 mb-4 overflow-hidden border border-cyan-300">
+                <div 
+                    className="h-full bg-cyan-500 rounded-full transition-all duration-700 ease-out flex items-center justify-end pr-2"
+                    style={{ width: `${Math.min(100, (dailyTotals.water / currentGoals.water) * 100)}%` }}
+                >
+                    {dailyTotals.water > 100 && <span className="text-[9px] text-white font-bold opacity-80">{Math.round((dailyTotals.water / currentGoals.water) * 100)}%</span>}
+                </div>
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+                <button onClick={() => addWaterLog(250, 'Water (Cup)')} className="col-span-1 bg-white hover:bg-cyan-100 py-2 rounded-xl flex flex-col items-center justify-center border border-cyan-100 shadow-sm active:scale-95 transition">
+                    <span className="text-xs font-bold text-cyan-700">+250</span>
+                    <span className="text-[10px] text-cyan-500">ml</span>
+                </button>
+                <button onClick={() => addWaterLog(500, 'Water (Bottle)')} className="col-span-1 bg-white hover:bg-cyan-100 py-2 rounded-xl flex flex-col items-center justify-center border border-cyan-100 shadow-sm active:scale-95 transition">
+                    <span className="text-xs font-bold text-cyan-700">+500</span>
+                    <span className="text-[10px] text-cyan-500">ml</span>
+                </button>
+                <button onClick={() => setIsWaterModalOpen(true)} className="col-span-1 bg-white hover:bg-cyan-100 py-2 rounded-xl flex flex-col items-center justify-center border border-cyan-100 shadow-sm active:scale-95 transition">
+                    <Edit2 size={16} className="text-cyan-500 mb-1" />
+                    <span className="text-[10px] text-cyan-600 font-bold">Custom</span>
+                </button>
+                <button onClick={() => startAnalysis('drink')} className="col-span-1 bg-cyan-600 hover:bg-cyan-700 py-2 rounded-xl flex flex-col items-center justify-center border border-cyan-600 shadow-sm active:scale-95 transition text-white">
+                    <Camera size={16} className="mb-1" />
+                    <span className="text-[10px] font-bold">Scan</span>
+                </button>
+            </div>
+         </div>
       </div>
       
       <div className="mb-6 bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
@@ -887,6 +979,8 @@ const App: React.FC = () => {
                     <div key={log.id} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex gap-4 items-center group">
                         {log.imageUrl ? (
                            <img src={log.imageUrl} alt={log.foodName} className="w-20 h-20 rounded-xl object-cover flex-shrink-0 bg-slate-100" />
+                        ) : log.foodName.includes('Water') ? (
+                           <div className="w-20 h-20 rounded-xl bg-cyan-50 flex items-center justify-center text-cyan-500 flex-shrink-0"><GlassWater size={32} /></div>
                         ) : (
                            <div className="w-20 h-20 rounded-xl bg-indigo-50 flex items-center justify-center text-2xl flex-shrink-0">{QUICK_MEALS.find(m => m.name === log.foodName)?.icon || '🍱'}</div>
                         )}
@@ -895,8 +989,8 @@ const App: React.FC = () => {
                             <p className="text-xs text-slate-500 line-clamp-1">{log.description}</p>
                             <div className="flex gap-3 mt-2 text-xs font-medium">
                                 <span className="text-indigo-500">{log.calories} kcal</span>
-                                <span className="text-blue-500">P: {log.protein}g</span>
-                                <span className="text-green-500">C: {log.carbs}g</span>
+                                {log.water > 0 && <span className="text-cyan-500">{log.water} ml</span>}
+                                {!log.foodName.includes('Water') && <span className="text-blue-500">P: {log.protein}g</span>}
                             </div>
                         </div>
                         <div className="flex flex-col gap-2 pl-2 border-l border-slate-100 ml-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
@@ -919,11 +1013,13 @@ const App: React.FC = () => {
         (Object.keys(currentGoals) as Array<keyof DailyGoals>).forEach((key) => {
             // @ts-ignore
             const val = adjustedResult[key];
-            if (val && typeof val === 'number' && val > (currentGoals[key] * 0.5)) {
+            if (val && typeof val === 'number' && key !== 'water' && val > (currentGoals[key] * 0.5)) {
                highNutrients.push(`${key.charAt(0).toUpperCase() + key.slice(1)} (${Math.round((val / currentGoals[key]) * 100)}%)`);
             }
         });
       }
+      
+      const isDrinkLog = analysisType === 'drink';
 
       return (
         <div className="h-full flex flex-col">
@@ -940,7 +1036,7 @@ const App: React.FC = () => {
                          <img src={coachImage} alt={`Coach ${coachName}`} className="w-full h-full object-cover relative z-10" />
                     </div>
                     <Loader2 size={36} className="animate-spin mb-4 text-indigo-400" />
-                    <p className="font-bold text-xl mb-1 text-center">Analyzing Food...</p>
+                    <p className="font-bold text-xl mb-1 text-center">Analyzing {analysisType === 'drink' ? 'Drink' : 'Food'}...</p>
                     <p className="text-sm text-slate-300 mb-6 text-center">Please wait while Coach {coachName} <br/> calculates the calories.</p>
                 </div>
             )}
@@ -968,7 +1064,7 @@ const App: React.FC = () => {
                             className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition ${inputMode === 'count' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}
                         >
                             <Hash size={16} />
-                            Item Count
+                            {isDrinkLog ? 'Volume (ml)' : 'Item Count'}
                         </button>
                     </div>
 
@@ -996,7 +1092,7 @@ const App: React.FC = () => {
                             <>
                                 <div className="flex justify-between items-center mb-4">
                                     <span className="text-slate-700 font-semibold text-sm">
-                                        How many {analysisResult.quantityUnit ? analysisResult.quantityUnit + 's' : 'items'}?
+                                        {isDrinkLog ? 'How many ml?' : `How many ${analysisResult.quantityUnit ? analysisResult.quantityUnit + 's' : 'items'}?`}
                                     </span>
                                     {analysisResult.itemCount && (
                                         <span className="text-xs text-slate-400 bg-white px-2 py-1 rounded border border-slate-200">
@@ -1006,7 +1102,7 @@ const App: React.FC = () => {
                                 </div>
                                 <div className="flex items-center justify-between gap-4">
                                     <button 
-                                        onClick={() => setCountValue(Math.max(1, countValue - 1))}
+                                        onClick={() => setCountValue(Math.max(1, countValue - (isDrinkLog ? 50 : 1)))}
                                         className="w-12 h-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-100 hover:text-indigo-600 transition"
                                     >
                                         <Minus size={20} />
@@ -1014,11 +1110,11 @@ const App: React.FC = () => {
                                     <div className="flex-1 text-center">
                                         <span className="text-3xl font-bold text-slate-800">{countValue}</span>
                                         <span className="block text-xs text-slate-400 font-medium uppercase mt-1">
-                                            {analysisResult.quantityUnit || 'Items'}
+                                            {isDrinkLog ? 'ml' : (analysisResult.quantityUnit || 'Items')}
                                         </span>
                                     </div>
                                     <button 
-                                        onClick={() => setCountValue(countValue + 1)}
+                                        onClick={() => setCountValue(countValue + (isDrinkLog ? 50 : 1))}
                                         className="w-12 h-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-100 hover:text-indigo-600 transition"
                                     >
                                         <Plus size={20} />
@@ -1028,6 +1124,16 @@ const App: React.FC = () => {
                         )}
                     </div>
                 </div>
+
+                {isDrinkLog && adjustedResult.sugar > 25 && (
+                     <div className="mb-6 bg-pink-50 border border-pink-200 p-4 rounded-2xl flex gap-3">
+                        <AlertTriangle className="text-pink-500 shrink-0" size={24} />
+                        <div>
+                            <h4 className="font-bold text-pink-800 text-sm">High Sugar Warning</h4>
+                            <p className="text-pink-700 text-xs mt-1">This drink contains {adjustedResult.sugar}g of sugar. That's high! Consider water instead.</p>
+                        </div>
+                    </div>
+                )}
 
                 {highNutrients.length > 0 && (
                     <div className="mb-6 bg-amber-50 border border-amber-200 p-4 rounded-2xl flex gap-3">
@@ -1045,18 +1151,37 @@ const App: React.FC = () => {
                         <p className="text-3xl font-bold text-indigo-900">{adjustedResult.calories}</p>
                     </div>
                     <div className="space-y-2">
-                        <div className="flex justify-between items-center bg-blue-50 px-3 py-2 rounded-xl border border-blue-100">
-                            <span className="text-blue-700 text-sm font-medium">Protein</span>
-                            <span className="text-blue-900 font-bold">{adjustedResult.protein}g</span>
-                        </div>
-                        <div className="flex justify-between items-center bg-green-50 px-3 py-2 rounded-xl border border-green-100">
-                            <span className="text-green-700 text-sm font-medium">Carbs</span>
-                            <span className="text-green-900 font-bold">{adjustedResult.carbs}g</span>
-                        </div>
-                        <div className="flex justify-between items-center bg-amber-50 px-3 py-2 rounded-xl border border-amber-100">
-                            <span className="text-amber-700 text-sm font-medium">Fat</span>
-                            <span className="text-amber-900 font-bold">{adjustedResult.fat}g</span>
-                        </div>
+                         {isDrinkLog ? (
+                             <>
+                                <div className="flex justify-between items-center bg-cyan-50 px-3 py-2 rounded-xl border border-cyan-100">
+                                    <span className="text-cyan-700 text-sm font-medium">Volume</span>
+                                    <span className="text-cyan-900 font-bold">{countValue}ml</span>
+                                </div>
+                                <div className="flex justify-between items-center bg-pink-50 px-3 py-2 rounded-xl border border-pink-100">
+                                    <span className="text-pink-700 text-sm font-medium">Sugar</span>
+                                    <span className="text-pink-900 font-bold">{adjustedResult.sugar}g</span>
+                                </div>
+                                <div className="flex justify-between items-center bg-blue-50 px-3 py-2 rounded-xl border border-blue-100">
+                                    <span className="text-blue-700 text-sm font-medium">Protein</span>
+                                    <span className="text-blue-900 font-bold">{adjustedResult.protein}g</span>
+                                </div>
+                             </>
+                         ) : (
+                             <>
+                                <div className="flex justify-between items-center bg-blue-50 px-3 py-2 rounded-xl border border-blue-100">
+                                    <span className="text-blue-700 text-sm font-medium">Protein</span>
+                                    <span className="text-blue-900 font-bold">{adjustedResult.protein}g</span>
+                                </div>
+                                <div className="flex justify-between items-center bg-green-50 px-3 py-2 rounded-xl border border-green-100">
+                                    <span className="text-green-700 text-sm font-medium">Carbs</span>
+                                    <span className="text-green-900 font-bold">{adjustedResult.carbs}g</span>
+                                </div>
+                                <div className="flex justify-between items-center bg-cyan-50 px-3 py-2 rounded-xl border border-cyan-100">
+                                    <span className="text-cyan-700 text-sm font-medium">Water</span>
+                                    <span className="text-cyan-900 font-bold">{adjustedResult.water}ml</span>
+                                </div>
+                             </>
+                         )}
                     </div>
                 </div>
 
@@ -1238,6 +1363,43 @@ const App: React.FC = () => {
           </div>
       )}
 
+      {/* Custom Water Modal */}
+      {isWaterModalOpen && (
+          <div className="absolute inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+              <div className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl animate-in fade-in zoom-in duration-200">
+                  <div className="flex justify-between items-center mb-6">
+                      <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                          <GlassWater className="text-cyan-500" size={24} />
+                          Add Water
+                      </h3>
+                      <button onClick={() => setIsWaterModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-500"><X size={20} /></button>
+                  </div>
+                  
+                  <div className="mb-6">
+                      <label className="block text-sm font-medium text-slate-600 mb-2">Amount in ml</label>
+                      <div className="relative">
+                          <input 
+                            type="number" 
+                            value={customWaterAmount} 
+                            onChange={(e) => setCustomWaterAmount(e.target.value)} 
+                            className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 text-lg font-bold text-slate-800" 
+                            placeholder="e.g. 300"
+                            autoFocus
+                          />
+                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium">ml</span>
+                      </div>
+                      <div className="flex gap-2 mt-3">
+                         <button onClick={() => setCustomWaterAmount('250')} className="flex-1 py-2 bg-slate-50 hover:bg-cyan-50 text-cyan-700 text-xs font-bold rounded-xl border border-slate-100 transition">250ml</button>
+                         <button onClick={() => setCustomWaterAmount('500')} className="flex-1 py-2 bg-slate-50 hover:bg-cyan-50 text-cyan-700 text-xs font-bold rounded-xl border border-slate-100 transition">500ml</button>
+                         <button onClick={() => setCustomWaterAmount('750')} className="flex-1 py-2 bg-slate-50 hover:bg-cyan-50 text-cyan-700 text-xs font-bold rounded-xl border border-slate-100 transition">750ml</button>
+                      </div>
+                  </div>
+
+                  <button onClick={addCustomWaterLog} className="w-full py-3 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-xl shadow-lg shadow-cyan-200 transition active:scale-95">Add Water</button>
+              </div>
+          </div>
+      )}
+
       {/* Exercise Add Modal */}
       {isExerciseModalOpen && (
           <div className="absolute inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
@@ -1297,6 +1459,10 @@ const App: React.FC = () => {
                     <div>
                         <label className="block text-xs font-medium text-slate-500 mb-1">Calories</label>
                         <input type="number" value={editingFoodLog.calories} onChange={(e) => setEditingFoodLog({...editingFoodLog, calories: parseInt(e.target.value) || 0})} className="w-full p-3 rounded-xl border border-slate-200 font-semibold text-slate-800" />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Water (ml)</label>
+                        <input type="number" value={editingFoodLog.water} onChange={(e) => setEditingFoodLog({...editingFoodLog, water: parseInt(e.target.value) || 0})} className="w-full p-3 rounded-xl border border-slate-200 font-semibold text-slate-800" />
                     </div>
                     <div>
                         <label className="block text-xs font-medium text-slate-500 mb-1">Protein (g)</label>
@@ -1425,13 +1591,6 @@ const App: React.FC = () => {
                           <p className="text-[10px] text-indigo-400 mt-2 flex items-center gap-1"><Target size={10} /> Max recommended rate: 5 lbs/month</p>
                       </div>
                   )}
-                  <div className="mb-6">
-                      <label className="block text-sm font-medium text-slate-600 mb-2">Daily Activity Goal (kcal)</label>
-                      <div className="relative">
-                        <input type="number" value={tempBurnGoal} onChange={(e) => setTempBurnGoal(e.target.value)} placeholder="400" className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-orange-500 text-lg font-semibold text-slate-800" />
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 text-slate-400 pointer-events-none"><Flame size={16} /> kcal</div>
-                      </div>
-                  </div>
                   <div className="mb-8">
                       <label className="block text-sm font-medium text-slate-600 mb-3">Frequent Activities</label>
                       <div className="grid grid-cols-3 gap-2">
