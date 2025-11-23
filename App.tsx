@@ -3,7 +3,7 @@ import { analyzeFoodImage } from './services/gemini';
 import { CalorieCard, MacroCard } from './components/MacroCharts';
 import { CameraInput } from './components/CameraInput';
 import { AppView, FoodAnalysisResult, FoodLogItem, ExerciseLogItem, DailyGoals, GoalType } from './types';
-import { Plus, ChevronLeft, ChevronRight, Check, Loader2, Utensils, ArrowRight, Sparkles, AlertTriangle, AlertOctagon, Settings, X, Sliders, Flame, Timer, Bike, Waves, Footprints, Dumbbell, Lightbulb, Activity, Mountain, Trophy, Wind, Swords, Target, TrendingDown, TrendingUp, Minus, Scale, PieChart, Zap, Calendar, Trash2, Hash, Camera, Upload, Edit2, Save } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Check, Loader2, Utensils, ArrowRight, Sparkles, AlertTriangle, AlertOctagon, Settings, X, Sliders, Flame, Timer, Bike, Waves, Footprints, Dumbbell, Lightbulb, Activity, Mountain, Trophy, Wind, Swords, Target, TrendingDown, TrendingUp, Minus, Scale, PieChart, Zap, Calendar, Trash2, Hash, Camera, Upload, Edit2, Save, Share, PlusSquare, MoreVertical, Download } from 'lucide-react';
 
 // Default Goals (Fallback if no weight is set)
 const DEFAULT_GOALS: DailyGoals = {
@@ -107,55 +107,75 @@ const App: React.FC = () => {
   // Delete Confirmation State
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'food' | 'exercise', id: string } | null>(null);
   
+  // Install Prompt State
+  const [showInstallHelp, setShowInstallHelp] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
+
   // Load data from local storage on mount
   useEffect(() => {
-    const savedLogs = localStorage.getItem('snapcalorie_logs');
-    if (savedLogs) setLogs(JSON.parse(savedLogs));
+    try {
+      const savedLogs = localStorage.getItem('snapcalorie_logs');
+      if (savedLogs) setLogs(JSON.parse(savedLogs));
 
-    const savedExerciseLogs = localStorage.getItem('snapcalorie_exercise_logs');
-    if (savedExerciseLogs) setExerciseLogs(JSON.parse(savedExerciseLogs));
-    
-    const savedWeight = localStorage.getItem('snapcalorie_weight');
-    if (savedWeight) {
-      setWeight(parseFloat(savedWeight));
-      setTempWeight(savedWeight);
-    } else {
-      setWeight(130);
+      const savedExerciseLogs = localStorage.getItem('snapcalorie_exercise_logs');
+      if (savedExerciseLogs) setExerciseLogs(JSON.parse(savedExerciseLogs));
+      
+      const savedWeight = localStorage.getItem('snapcalorie_weight');
+      if (savedWeight) {
+        setWeight(parseFloat(savedWeight));
+        setTempWeight(savedWeight);
+      } else {
+        setWeight(130);
+      }
+
+      const savedSports = localStorage.getItem('snapcalorie_sports');
+      if (savedSports) {
+        setFrequentSports(JSON.parse(savedSports));
+        setTempSports(JSON.parse(savedSports));
+      }
+
+      const savedGoalType = localStorage.getItem('snapcalorie_goal_type');
+      if (savedGoalType) setGoalType(savedGoalType as GoalType);
+
+      const savedTargetLbs = localStorage.getItem('snapcalorie_target_lbs');
+      if (savedTargetLbs) setTargetLbs(parseFloat(savedTargetLbs));
+
+      const savedTargetMonths = localStorage.getItem('snapcalorie_target_months');
+      if (savedTargetMonths) setTargetMonths(parseFloat(savedTargetMonths));
+
+      const savedBurnGoal = localStorage.getItem('snapcalorie_burn_goal');
+      if (savedBurnGoal) setBurnGoal(parseFloat(savedBurnGoal));
+      
+      const savedCoachName = localStorage.getItem('snapcalorie_coach_name');
+      if (savedCoachName) setCoachName(savedCoachName);
+      
+      const savedCoachImage = localStorage.getItem('snapcalorie_coach_image');
+      if (savedCoachImage) setCoachImage(savedCoachImage);
+
+      // Check if running in standalone mode (installed)
+      if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true) {
+          setIsStandalone(true);
+      }
+    } catch (e) {
+      console.error("Failed to load data from storage", e);
     }
-
-    const savedSports = localStorage.getItem('snapcalorie_sports');
-    if (savedSports) {
-      setFrequentSports(JSON.parse(savedSports));
-      setTempSports(JSON.parse(savedSports));
-    }
-
-    const savedGoalType = localStorage.getItem('snapcalorie_goal_type');
-    if (savedGoalType) setGoalType(savedGoalType as GoalType);
-
-    const savedTargetLbs = localStorage.getItem('snapcalorie_target_lbs');
-    if (savedTargetLbs) setTargetLbs(parseFloat(savedTargetLbs));
-
-    const savedTargetMonths = localStorage.getItem('snapcalorie_target_months');
-    if (savedTargetMonths) setTargetMonths(parseFloat(savedTargetMonths));
-
-    const savedBurnGoal = localStorage.getItem('snapcalorie_burn_goal');
-    if (savedBurnGoal) setBurnGoal(parseFloat(savedBurnGoal));
-    
-    const savedCoachName = localStorage.getItem('snapcalorie_coach_name');
-    if (savedCoachName) setCoachName(savedCoachName);
-    
-    const savedCoachImage = localStorage.getItem('snapcalorie_coach_image');
-    if (savedCoachImage) setCoachImage(savedCoachImage);
-
   }, []);
 
-  // Persistence Effects
+  // Persistence Effects - Wrapped in try/catch to prevent crashes if storage is full
   useEffect(() => {
-    localStorage.setItem('snapcalorie_logs', JSON.stringify(logs));
+    try {
+      localStorage.setItem('snapcalorie_logs', JSON.stringify(logs));
+    } catch (e) {
+      console.warn("Storage full: Could not save food logs", e);
+    }
   }, [logs]);
 
   useEffect(() => {
-    localStorage.setItem('snapcalorie_exercise_logs', JSON.stringify(exerciseLogs));
+    try {
+      localStorage.setItem('snapcalorie_exercise_logs', JSON.stringify(exerciseLogs));
+    } catch (e) {
+      console.warn("Storage full: Could not save exercise logs", e);
+    }
   }, [exerciseLogs]);
 
   useEffect(() => {
@@ -181,7 +201,11 @@ const App: React.FC = () => {
   }, [coachName]);
 
   useEffect(() => {
-    localStorage.setItem('snapcalorie_coach_image', coachImage);
+    try {
+      localStorage.setItem('snapcalorie_coach_image', coachImage);
+    } catch(e) {
+      console.warn("Storage full: Could not save coach image", e);
+    }
   }, [coachImage]);
 
   // --- Goal Calculation Logic ---
@@ -392,7 +416,11 @@ const App: React.FC = () => {
         timestamp: Date.now(),
         imageUrl: currentImage,
       };
+      
+      // Update logs state
       setLogs(prev => [newLog, ...prev]);
+      
+      // Transition view immediately
       setView(AppView.DASHBOARD);
       setSelectedDate(new Date());
       setCurrentImage(null);
@@ -592,7 +620,7 @@ const App: React.FC = () => {
 
   // View: Launch Screen
   const renderLaunchScreen = () => (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-between bg-indigo-600 text-white overflow-hidden">
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-between bg-indigo-600 text-white overflow-hidden pb-safe">
         <div className="absolute inset-0 opacity-40">
             <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-500 rounded-full blur-3xl animate-pulse mix-blend-screen"></div>
             <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-blue-500 rounded-full blur-3xl animate-pulse mix-blend-screen" style={{ animationDelay: '2s' }}></div>
@@ -617,14 +645,26 @@ const App: React.FC = () => {
                 <span className="font-semibold text-white">Coach {coachName}</span> is ready to help you hit your goals.
             </p>
 
-            <button 
-                onClick={() => setView(AppView.DASHBOARD)}
-                className="group relative w-full max-w-xs bg-white text-indigo-600 px-8 py-5 rounded-2xl font-bold text-xl shadow-2xl shadow-indigo-900/40 flex items-center justify-center gap-3 overflow-hidden transition-all hover:shadow-indigo-900/50 hover:scale-[1.02] active:scale-[0.98]"
-            >
-                <div className="absolute inset-0 bg-gradient-to-r from-indigo-50 to-white opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <span className="relative z-10">Get Started</span>
-                <ArrowRight size={24} className="relative z-10 group-hover:translate-x-1 transition-transform" />
-            </button>
+            <div className="flex flex-col gap-4 w-full max-w-xs">
+              <button 
+                  onClick={() => setView(AppView.DASHBOARD)}
+                  className="group relative w-full bg-white text-indigo-600 px-8 py-5 rounded-2xl font-bold text-xl shadow-2xl shadow-indigo-900/40 flex items-center justify-center gap-3 overflow-hidden transition-all hover:shadow-indigo-900/50 hover:scale-[1.02] active:scale-[0.98]"
+              >
+                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-50 to-white opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <span className="relative z-10">Get Started</span>
+                  <ArrowRight size={24} className="relative z-10 group-hover:translate-x-1 transition-transform" />
+              </button>
+              
+              {!isStandalone && (
+                <button 
+                   onClick={() => setShowInstallHelp(true)}
+                   className="flex items-center justify-center gap-2 text-indigo-200 hover:text-white transition py-2 rounded-xl"
+                >
+                   <Download size={18} />
+                   <span className="text-sm font-medium">Install App</span>
+                </button>
+              )}
+            </div>
         </div>
     </div>
   );
@@ -632,8 +672,8 @@ const App: React.FC = () => {
   // View: Dashboard
   const renderDashboard = () => (
     <div className="pb-10">
-      <header className="mb-6 bg-white p-4 -mx-6 -mt-8 pt-8 sticky top-0 z-20 shadow-sm border-b border-slate-100">
-        <div className="flex justify-between items-center">
+      <header className="mb-6 bg-white p-4 -mx-6 -mt-8 pt-safe sticky top-0 z-20 shadow-sm border-b border-slate-100">
+        <div className="flex justify-between items-center mt-8">
            <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-indigo-100 shadow-sm bg-indigo-50">
                  <img src={coachImage} alt={`Coach ${coachName}`} className="w-full h-full object-cover" />
@@ -891,7 +931,7 @@ const App: React.FC = () => {
             {currentImage && (
                 <img src={currentImage} alt="Captured Food" className="w-full h-full object-cover opacity-80" />
             )}
-            <button onClick={() => setView(AppView.DASHBOARD)} className="absolute top-4 left-4 p-2 bg-black/30 backdrop-blur-md rounded-full text-white hover:bg-black/40 transition z-10"><ChevronLeft size={24} /></button>
+            <button onClick={() => setView(AppView.DASHBOARD)} className="absolute top-4 left-4 p-2 bg-black/30 backdrop-blur-md rounded-full text-white hover:bg-black/40 transition z-10 pt-safe mt-4"><ChevronLeft size={24} /></button>
             
             {isAnalyzing && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center z-20 bg-black/60 backdrop-blur-md text-white animate-in fade-in duration-300">
@@ -1079,8 +1119,52 @@ const App: React.FC = () => {
   if (view === AppView.LAUNCH) return renderLaunchScreen();
 
   return (
-    <div className="max-w-md mx-auto h-[100dvh] bg-slate-50 relative shadow-2xl overflow-hidden flex flex-col">
+    <div className="max-w-md mx-auto h-[100dvh] bg-slate-50 relative shadow-2xl overflow-hidden flex flex-col pb-safe">
       
+      {/* Install App Instructions Modal */}
+      {showInstallHelp && (
+         <div className="absolute inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-sm p-8 shadow-2xl animate-in slide-in-from-bottom duration-300">
+                <div className="flex justify-between items-center mb-6">
+                   <h3 className="text-2xl font-bold text-slate-800">Install App</h3>
+                   <button onClick={() => setShowInstallHelp(false)} className="p-2 bg-slate-100 hover:bg-slate-200 rounded-full text-slate-500 transition"><X size={20} /></button>
+                </div>
+                
+                <div className="space-y-6">
+                    <div className="flex gap-4 items-start">
+                        <div className="bg-indigo-50 p-3 rounded-2xl text-indigo-600">
+                            <Share size={24} />
+                        </div>
+                        <div>
+                            <h4 className="font-bold text-slate-800">1. Tap Share</h4>
+                            <p className="text-sm text-slate-500">Tap the Share icon at the bottom of your Safari browser.</p>
+                        </div>
+                    </div>
+                    
+                    <div className="w-full h-px bg-slate-100"></div>
+
+                    <div className="flex gap-4 items-start">
+                        <div className="bg-indigo-50 p-3 rounded-2xl text-indigo-600">
+                            <PlusSquare size={24} />
+                        </div>
+                        <div>
+                            <h4 className="font-bold text-slate-800">2. Add to Home Screen</h4>
+                            <p className="text-sm text-slate-500">Scroll down and tap "Add to Home Screen".</p>
+                        </div>
+                    </div>
+
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 mt-4">
+                        <p className="text-xs text-slate-500 flex items-center gap-2">
+                           <span className="font-bold text-indigo-600">Note for Android:</span> Tap the <MoreVertical size={12} className="inline" /> menu and select "Install App".
+                        </p>
+                    </div>
+                </div>
+
+                <button onClick={() => setShowInstallHelp(false)} className="w-full mt-8 py-4 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 transition">Got it!</button>
+            </div>
+         </div>
+      )}
+
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
         <div className="absolute inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">

@@ -40,7 +40,7 @@ export const CameraInput: React.FC<CameraInputProps> = ({ onCapture, onClose }) 
       console.error("Error accessing camera:", err);
       setError("Unable to access camera. Please allow camera permissions or use file upload.");
     }
-  }, [facingMode]); // Dependencies for useCallback
+  }, [facingMode]);
 
   useEffect(() => {
     startCamera();
@@ -51,16 +51,33 @@ export const CameraInput: React.FC<CameraInputProps> = ({ onCapture, onClose }) 
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startCamera]); // Correct dependency
+  }, [startCamera]);
 
   const capturePhoto = () => {
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
       
-      // Set canvas dimensions to match video
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      // OPTIMIZATION: Resize image to prevent memory crashes on mobile
+      // Max dimension 800px is sufficient for AI analysis but much smaller in size
+      const MAX_SIZE = 800;
+      let width = video.videoWidth;
+      let height = video.videoHeight;
+      
+      if (width > height) {
+        if (width > MAX_SIZE) {
+          height = height * (MAX_SIZE / width);
+          width = MAX_SIZE;
+        }
+      } else {
+        if (height > MAX_SIZE) {
+          width = width * (MAX_SIZE / height);
+          height = MAX_SIZE;
+        }
+      }
+      
+      canvas.width = width;
+      canvas.height = height;
       
       const context = canvas.getContext('2d');
       if (context) {
@@ -71,7 +88,9 @@ export const CameraInput: React.FC<CameraInputProps> = ({ onCapture, onClose }) 
         }
         
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imageData = canvas.toDataURL('image/jpeg', 0.8);
+        
+        // Use 0.7 quality to further reduce Base64 string size
+        const imageData = canvas.toDataURL('image/jpeg', 0.7);
         onCapture(imageData);
       }
     }
@@ -87,6 +106,8 @@ export const CameraInput: React.FC<CameraInputProps> = ({ onCapture, onClose }) 
           const reader = new FileReader();
           reader.onloadend = () => {
               const result = reader.result as string;
+              // Optional: You could also resize uploaded files here using an offscreen canvas
+              // But usually uploads are handled okay. For safety, we pass it through.
               onCapture(result);
           };
           reader.readAsDataURL(file);
