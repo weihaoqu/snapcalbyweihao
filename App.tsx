@@ -3,7 +3,7 @@ import { analyzeFoodImage } from './services/gemini';
 import { CalorieCard, MacroCard } from './components/MacroCharts';
 import { CameraInput } from './components/CameraInput';
 import { AppView, FoodAnalysisResult, FoodLogItem, ExerciseLogItem, DailyGoals, GoalType } from './types';
-import { Plus, ChevronLeft, ChevronRight, Check, Loader2, Utensils, ArrowRight, Sparkles, AlertTriangle, AlertOctagon, Settings, X, Sliders, Flame, Timer, Bike, Waves, Footprints, Dumbbell, Lightbulb, Activity, Mountain, Trophy, Wind, Swords, Target, TrendingDown, TrendingUp, Minus, Scale, PieChart, Zap, Calendar, Trash2, Hash, Camera, Upload, Edit2 } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Check, Loader2, Utensils, ArrowRight, Sparkles, AlertTriangle, AlertOctagon, Settings, X, Sliders, Flame, Timer, Bike, Waves, Footprints, Dumbbell, Lightbulb, Activity, Mountain, Trophy, Wind, Swords, Target, TrendingDown, TrendingUp, Minus, Scale, PieChart, Zap, Calendar, Trash2, Hash, Camera, Upload, Edit2, Save } from 'lucide-react';
 
 // Default Goals (Fallback if no weight is set)
 const DEFAULT_GOALS: DailyGoals = {
@@ -49,6 +49,7 @@ const QUICK_MEALS = [
 
 const DEFAULT_COACH_IMAGE = "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Animals/Black%20Cat.png"; 
 const DEFAULT_COACH_NAME = "Oreo";
+const USER_CAT_IMAGE = "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Animals/Black%20Cat.png";
 
 const App: React.FC = () => {
   // State
@@ -94,6 +95,17 @@ const App: React.FC = () => {
   const [selectedExerciseId, setSelectedExerciseId] = useState<string>('Running');
   const [exerciseDuration, setExerciseDuration] = useState<number>(30);
   const [exerciseCalories, setExerciseCalories] = useState<string>('');
+  
+  // Quick Add Modal State
+  const [quickAddModal, setQuickAddModal] = useState<{ isOpen: boolean, meal: typeof QUICK_MEALS[0] | null }>({ isOpen: false, meal: null });
+  const [quickAddQuantity, setQuickAddQuantity] = useState<number>(1);
+
+  // Edit States
+  const [editingFoodLog, setEditingFoodLog] = useState<FoodLogItem | null>(null);
+  const [editingExerciseLog, setEditingExerciseLog] = useState<ExerciseLogItem | null>(null);
+
+  // Delete Confirmation State
+  const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'food' | 'exercise', id: string } | null>(null);
   
   // Load data from local storage on mount
   useEffect(() => {
@@ -389,21 +401,31 @@ const App: React.FC = () => {
   };
 
   // Quick Add Meal Logic
-  const addQuickMeal = (meal: typeof QUICK_MEALS[0]) => {
-      const newLog: FoodLogItem = {
+  const initiateQuickAdd = (meal: typeof QUICK_MEALS[0]) => {
+      setQuickAddModal({ isOpen: true, meal });
+      setQuickAddQuantity(1);
+  };
+
+  const confirmQuickMeal = () => {
+    if (!quickAddModal.meal) return;
+    const { meal } = quickAddModal;
+    const multiplier = quickAddQuantity;
+
+    const newLog: FoodLogItem = {
           id: Date.now().toString(),
           timestamp: Date.now(),
           imageUrl: '',
           foodName: meal.name,
-          description: 'Quick added meal',
-          calories: meal.calories,
-          protein: meal.protein,
-          carbs: meal.carbs,
-          fat: meal.fat,
+          description: `Quick add (${multiplier} serving${multiplier !== 1 ? 's' : ''})`,
+          calories: Math.round(meal.calories * multiplier),
+          protein: Math.round(meal.protein * multiplier),
+          carbs: Math.round(meal.carbs * multiplier),
+          fat: Math.round(meal.fat * multiplier),
           sugar: 0, fiber: 0, sodium: 0, potassium: 0, cholesterol: 0,
           exerciseSuggestions: []
-      };
-      setLogs(prev => [newLog, ...prev]);
+    };
+    setLogs(prev => [newLog, ...prev]);
+    setQuickAddModal({ isOpen: false, meal: null });
   };
 
   // Exercise Logic
@@ -434,6 +456,52 @@ const App: React.FC = () => {
       };
       setExerciseLogs(prev => [newExercise, ...prev]);
       setIsExerciseModalOpen(false);
+  };
+
+  // Delete Handlers
+  const requestDeleteFood = (id: string, e: React.MouseEvent) => {
+      e.stopPropagation();
+      setDeleteConfirm({ type: 'food', id });
+  };
+
+  const requestDeleteExercise = (id: string, e: React.MouseEvent) => {
+      e.stopPropagation();
+      setDeleteConfirm({ type: 'exercise', id });
+  };
+
+  const proceedWithDelete = () => {
+      if (!deleteConfirm) return;
+      if (deleteConfirm.type === 'food') {
+          setLogs(prev => prev.filter(log => log.id !== deleteConfirm.id));
+      } else {
+          setExerciseLogs(prev => prev.filter(log => log.id !== deleteConfirm.id));
+      }
+      setDeleteConfirm(null);
+  };
+
+  // Edit Handlers
+  const openEditFood = (log: FoodLogItem, e: React.MouseEvent) => {
+      e.stopPropagation();
+      setEditingFoodLog({...log});
+  };
+
+  const saveFoodEdit = () => {
+      if(editingFoodLog) {
+          setLogs(prev => prev.map(log => log.id === editingFoodLog.id ? editingFoodLog : log));
+          setEditingFoodLog(null);
+      }
+  };
+
+  const openEditExercise = (log: ExerciseLogItem, e: React.MouseEvent) => {
+      e.stopPropagation();
+      setEditingExerciseLog({...log});
+  };
+
+  const saveExerciseEdit = () => {
+      if(editingExerciseLog) {
+          setExerciseLogs(prev => prev.map(log => log.id === editingExerciseLog.id ? editingExerciseLog : log));
+          setEditingExerciseLog(null);
+      }
   };
 
 
@@ -621,7 +689,7 @@ const App: React.FC = () => {
             {QUICK_MEALS.map((meal) => (
                 <button 
                     key={meal.name}
-                    onClick={() => addQuickMeal(meal)}
+                    onClick={() => initiateQuickAdd(meal)}
                     className="flex flex-col items-center bg-white p-3 rounded-2xl min-w-[100px] border border-slate-100 shadow-sm hover:border-indigo-200 hover:shadow-md transition active:scale-95 flex-shrink-0"
                 >
                     <span className="text-2xl mb-1">{meal.icon}</span>
@@ -679,7 +747,7 @@ const App: React.FC = () => {
           {dailyExercises.length > 0 ? (
               <div className="space-y-3">
                   {dailyExercises.map((log) => (
-                      <div key={log.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl">
+                      <div key={log.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl group">
                           <div className="flex items-center gap-3">
                               <div className="bg-white p-2 rounded-xl shadow-sm text-slate-600">{getExerciseIcon(log.activityName)}</div>
                               <div>
@@ -687,7 +755,13 @@ const App: React.FC = () => {
                                   <p className="text-xs text-slate-400">{log.durationMinutes} mins</p>
                               </div>
                           </div>
-                          <span className="text-sm font-bold text-orange-500">-{log.caloriesBurned}</span>
+                          <div className="flex items-center gap-3">
+                             <span className="text-sm font-bold text-orange-500">-{log.caloriesBurned}</span>
+                             <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                <button onClick={(e) => openEditExercise(log, e)} className="p-1.5 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition"><Edit2 size={14} /></button>
+                                <button onClick={(e) => requestDeleteExercise(log.id, e)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition"><Trash2 size={14} /></button>
+                             </div>
+                          </div>
                       </div>
                   ))}
               </div>
@@ -770,7 +844,7 @@ const App: React.FC = () => {
         ) : (
             <div className="space-y-4">
                 {dailyLogs.map((log) => (
-                    <div key={log.id} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex gap-4 items-center">
+                    <div key={log.id} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex gap-4 items-center group">
                         {log.imageUrl ? (
                            <img src={log.imageUrl} alt={log.foodName} className="w-20 h-20 rounded-xl object-cover flex-shrink-0 bg-slate-100" />
                         ) : (
@@ -785,6 +859,10 @@ const App: React.FC = () => {
                                 <span className="text-green-500">C: {log.carbs}g</span>
                             </div>
                         </div>
+                        <div className="flex flex-col gap-2 pl-2 border-l border-slate-100 ml-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                            <button onClick={(e) => openEditFood(log, e)} className="p-1.5 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition"><Edit2 size={16} /></button>
+                            <button onClick={(e) => requestDeleteFood(log.id, e)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition"><Trash2 size={16} /></button>
+                        </div>
                     </div>
                 ))}
             </div>
@@ -795,16 +873,17 @@ const App: React.FC = () => {
 
   // View: Analysis Result
   const renderAnalysis = () => {
-      if (!adjustedResult) return null;
-
+      // Calculate high nutrients only if adjustedResult exists
       const highNutrients: string[] = [];
-      (Object.keys(currentGoals) as Array<keyof DailyGoals>).forEach((key) => {
-          // @ts-ignore
-          const val = adjustedResult[key];
-          if (val && typeof val === 'number' && val > (currentGoals[key] * 0.5)) {
-             highNutrients.push(`${key.charAt(0).toUpperCase() + key.slice(1)} (${Math.round((val / currentGoals[key]) * 100)}%)`);
-          }
-      });
+      if (adjustedResult) {
+        (Object.keys(currentGoals) as Array<keyof DailyGoals>).forEach((key) => {
+            // @ts-ignore
+            const val = adjustedResult[key];
+            if (val && typeof val === 'number' && val > (currentGoals[key] * 0.5)) {
+               highNutrients.push(`${key.charAt(0).toUpperCase() + key.slice(1)} (${Math.round((val / currentGoals[key]) * 100)}%)`);
+            }
+        });
+      }
 
       return (
         <div className="h-full flex flex-col">
@@ -815,19 +894,20 @@ const App: React.FC = () => {
             <button onClick={() => setView(AppView.DASHBOARD)} className="absolute top-4 left-4 p-2 bg-black/30 backdrop-blur-md rounded-full text-white hover:bg-black/40 transition z-10"><ChevronLeft size={24} /></button>
             
             {isAnalyzing && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center z-20 bg-black/40 backdrop-blur-sm text-white">
-                    <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-white/20 mb-6 animate-pulse">
-                         <img src={coachImage} alt={`Coach ${coachName}`} className="w-full h-full object-cover" />
+                <div className="absolute inset-0 flex flex-col items-center justify-center z-20 bg-black/60 backdrop-blur-md text-white animate-in fade-in duration-300">
+                    <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-indigo-400/30 mb-6 shadow-2xl shadow-indigo-900/50 relative">
+                         <div className="absolute inset-0 bg-indigo-500/20 animate-pulse"></div>
+                         <img src={coachImage} alt={`Coach ${coachName}`} className="w-full h-full object-cover relative z-10" />
                     </div>
-                    <Loader2 size={32} className="animate-spin mb-4 text-indigo-400" />
-                    <p className="font-medium text-lg">Coach {coachName} is sniffing...</p>
-                    <p className="text-sm text-white/70">Identifying ingredients & macros</p>
+                    <Loader2 size={36} className="animate-spin mb-4 text-indigo-400" />
+                    <p className="font-bold text-xl mb-1 text-center">Analyzing Food...</p>
+                    <p className="text-sm text-slate-300 mb-6 text-center">Please wait while Coach {coachName} <br/> calculates the calories.</p>
                 </div>
             )}
         </div>
 
         {!isAnalyzing && adjustedResult && (
-            <div className="flex-1 bg-white -mt-6 rounded-t-3xl p-6 shadow-lg z-10 relative overflow-y-auto">
+            <div className="flex-1 bg-white -mt-6 rounded-t-3xl p-6 shadow-lg z-10 relative overflow-y-auto animate-in slide-in-from-bottom-10 duration-500">
                 <div className="w-16 h-1.5 bg-slate-200 rounded-full mx-auto mb-6"></div>
                 
                 <div className="mb-6">
@@ -1001,6 +1081,80 @@ const App: React.FC = () => {
   return (
     <div className="max-w-md mx-auto h-[100dvh] bg-slate-50 relative shadow-2xl overflow-hidden flex flex-col">
       
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="absolute inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+           <div className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl animate-in fade-in zoom-in duration-200 text-center">
+              <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Trash2 size={32} />
+              </div>
+              <h3 className="text-xl font-bold text-slate-800 mb-2">Delete this item?</h3>
+              <p className="text-slate-500 mb-6">This action cannot be undone.</p>
+              <div className="flex gap-3">
+                  <button onClick={() => setDeleteConfirm(null)} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl transition">Cancel</button>
+                  <button onClick={proceedWithDelete} className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl shadow-lg shadow-red-200 transition">Delete</button>
+              </div>
+           </div>
+        </div>
+      )}
+
+      {/* Quick Add Modal */}
+      {quickAddModal.isOpen && quickAddModal.meal && (
+          <div className="absolute inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+              <div className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl animate-in fade-in zoom-in duration-200">
+                  <div className="flex justify-between items-center mb-6">
+                      <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                          <Zap className="text-amber-500" size={24} />
+                          Quick Add
+                      </h3>
+                      <button onClick={() => setQuickAddModal({ isOpen: false, meal: null })} className="p-2 hover:bg-slate-100 rounded-full text-slate-500"><X size={20} /></button>
+                  </div>
+                  
+                  <div className="flex flex-col items-center mb-6">
+                      <div className="text-6xl mb-4">{quickAddModal.meal.icon}</div>
+                      <h4 className="text-2xl font-bold text-slate-800">{quickAddModal.meal.name}</h4>
+                      <p className="text-slate-500">{quickAddModal.meal.calories} kcal / serving</p>
+                  </div>
+
+                  <div className="mb-6">
+                      <label className="block text-sm font-medium text-slate-600 mb-2 text-center">How many servings?</label>
+                      <div className="flex items-center justify-center gap-4">
+                          <button 
+                              onClick={() => setQuickAddQuantity(Math.max(1, quickAddQuantity - 1))}
+                              className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition"
+                          >
+                              <Minus size={20} />
+                          </button>
+                          <span className="text-3xl font-bold text-slate-800 w-12 text-center">{quickAddQuantity}</span>
+                          <button 
+                              onClick={() => setQuickAddQuantity(quickAddQuantity + 1)}
+                              className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition"
+                          >
+                              <Plus size={20} />
+                          </button>
+                      </div>
+                  </div>
+
+                  <div className="bg-slate-50 rounded-2xl p-4 mb-6 border border-slate-100">
+                      <div className="flex justify-between items-center mb-2">
+                          <span className="text-slate-600 font-medium">Total Calories</span>
+                          <span className="text-indigo-600 font-bold text-lg">{Math.round(quickAddModal.meal.calories * quickAddQuantity)} kcal</span>
+                      </div>
+                      <div className="flex gap-2 text-xs text-slate-400 justify-end">
+                          <span>P: {Math.round(quickAddModal.meal.protein * quickAddQuantity)}g</span>
+                          <span>•</span>
+                          <span>C: {Math.round(quickAddModal.meal.carbs * quickAddQuantity)}g</span>
+                          <span>•</span>
+                          <span>F: {Math.round(quickAddModal.meal.fat * quickAddQuantity)}g</span>
+                      </div>
+                  </div>
+
+                  <button onClick={confirmQuickMeal} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition active:scale-95">Add to Log</button>
+              </div>
+          </div>
+      )}
+
+      {/* Exercise Add Modal */}
       {isExerciseModalOpen && (
           <div className="absolute inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
               <div className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl animate-in fade-in zoom-in duration-200">
@@ -1040,6 +1194,73 @@ const App: React.FC = () => {
                   <button onClick={addExerciseLog} className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl shadow-lg shadow-orange-200 transition active:scale-95">Log Workout</button>
               </div>
           </div>
+      )}
+
+      {/* Edit Food Log Modal */}
+      {editingFoodLog && (
+        <div className="absolute inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+           <div className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl animate-in fade-in zoom-in duration-200">
+              <div className="flex justify-between items-center mb-6">
+                 <h3 className="text-xl font-bold text-slate-800">Edit Meal</h3>
+                 <button onClick={() => setEditingFoodLog(null)} className="p-2 hover:bg-slate-100 rounded-full text-slate-500"><X size={20} /></button>
+              </div>
+              <div className="space-y-4 mb-6">
+                 <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Food Name</label>
+                    <input type="text" value={editingFoodLog.foodName} onChange={(e) => setEditingFoodLog({...editingFoodLog, foodName: e.target.value})} className="w-full p-3 rounded-xl border border-slate-200 font-semibold text-slate-800" />
+                 </div>
+                 <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Calories</label>
+                        <input type="number" value={editingFoodLog.calories} onChange={(e) => setEditingFoodLog({...editingFoodLog, calories: parseInt(e.target.value) || 0})} className="w-full p-3 rounded-xl border border-slate-200 font-semibold text-slate-800" />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Protein (g)</label>
+                        <input type="number" value={editingFoodLog.protein} onChange={(e) => setEditingFoodLog({...editingFoodLog, protein: parseInt(e.target.value) || 0})} className="w-full p-3 rounded-xl border border-slate-200 font-semibold text-slate-800" />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Carbs (g)</label>
+                        <input type="number" value={editingFoodLog.carbs} onChange={(e) => setEditingFoodLog({...editingFoodLog, carbs: parseInt(e.target.value) || 0})} className="w-full p-3 rounded-xl border border-slate-200 font-semibold text-slate-800" />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Fat (g)</label>
+                        <input type="number" value={editingFoodLog.fat} onChange={(e) => setEditingFoodLog({...editingFoodLog, fat: parseInt(e.target.value) || 0})} className="w-full p-3 rounded-xl border border-slate-200 font-semibold text-slate-800" />
+                    </div>
+                 </div>
+              </div>
+              <button onClick={saveFoodEdit} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition">Save Changes</button>
+           </div>
+        </div>
+      )}
+
+      {/* Edit Exercise Log Modal */}
+      {editingExerciseLog && (
+        <div className="absolute inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+           <div className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl animate-in fade-in zoom-in duration-200">
+              <div className="flex justify-between items-center mb-6">
+                 <h3 className="text-xl font-bold text-slate-800">Edit Workout</h3>
+                 <button onClick={() => setEditingExerciseLog(null)} className="p-2 hover:bg-slate-100 rounded-full text-slate-500"><X size={20} /></button>
+              </div>
+              <div className="space-y-4 mb-6">
+                 <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Activity</label>
+                    <div className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-600 flex items-center gap-2">
+                       {getExerciseIcon(editingExerciseLog.activityName)}
+                       {editingExerciseLog.activityName}
+                    </div>
+                 </div>
+                 <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Duration (mins)</label>
+                    <input type="number" value={editingExerciseLog.durationMinutes} onChange={(e) => setEditingExerciseLog({...editingExerciseLog, durationMinutes: parseInt(e.target.value) || 0})} className="w-full p-3 rounded-xl border border-slate-200 font-semibold text-slate-800" />
+                 </div>
+                 <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Calories Burned</label>
+                    <input type="number" value={editingExerciseLog.caloriesBurned} onChange={(e) => setEditingExerciseLog({...editingExerciseLog, caloriesBurned: parseInt(e.target.value) || 0})} className="w-full p-3 rounded-xl border border-slate-200 font-semibold text-slate-800" />
+                 </div>
+              </div>
+              <button onClick={saveExerciseEdit} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition">Save Changes</button>
+           </div>
+        </div>
       )}
 
       {isSettingsOpen && (
