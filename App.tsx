@@ -3,7 +3,7 @@ import { analyzeFoodImage } from './services/gemini';
 import { CalorieCard, MacroCard } from './components/MacroCharts';
 import { CameraInput } from './components/CameraInput';
 import { AppView, FoodAnalysisResult, FoodLogItem, ExerciseLogItem, DailyGoals, GoalType } from './types';
-import { Plus, ChevronLeft, ChevronRight, Check, Loader2, Utensils, ArrowRight, Sparkles, AlertTriangle, AlertOctagon, Settings, X, Sliders, Flame, Timer, Bike, Waves, Footprints, Dumbbell, Lightbulb, Activity, Mountain, Trophy, Wind, Swords, Target, TrendingDown, TrendingUp, Minus, Scale, PieChart, Zap, Calendar, Trash2, Hash } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Check, Loader2, Utensils, ArrowRight, Sparkles, AlertTriangle, AlertOctagon, Settings, X, Sliders, Flame, Timer, Bike, Waves, Footprints, Dumbbell, Lightbulb, Activity, Mountain, Trophy, Wind, Swords, Target, TrendingDown, TrendingUp, Minus, Scale, PieChart, Zap, Calendar, Trash2, Hash, Camera, Upload, Edit2 } from 'lucide-react';
 
 // Default Goals (Fallback if no weight is set)
 const DEFAULT_GOALS: DailyGoals = {
@@ -47,7 +47,8 @@ const QUICK_MEALS = [
   { name: 'Avocado Toast', calories: 250, protein: 6, carbs: 20, fat: 15, icon: '🥑' },
 ];
 
-const USER_CAT_IMAGE = "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Animals/Black%20Cat.png"; // Cartoon Oreo
+const DEFAULT_COACH_IMAGE = "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Animals/Black%20Cat.png"; 
+const DEFAULT_COACH_NAME = "Oreo";
 
 const App: React.FC = () => {
   // State
@@ -72,6 +73,10 @@ const App: React.FC = () => {
   const [frequentSports, setFrequentSports] = useState<string[]>([]);
   const [burnGoal, setBurnGoal] = useState<number>(400); // Daily calorie burn goal
   
+  // Coach Persona State
+  const [coachName, setCoachName] = useState<string>(DEFAULT_COACH_NAME);
+  const [coachImage, setCoachImage] = useState<string>(DEFAULT_COACH_IMAGE);
+
   // Settings Modal Temporary State
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [tempWeight, setTempWeight] = useState<string>('');
@@ -80,6 +85,8 @@ const App: React.FC = () => {
   const [tempTargetMonths, setTempTargetMonths] = useState<string>('');
   const [tempSports, setTempSports] = useState<string[]>([]);
   const [tempBurnGoal, setTempBurnGoal] = useState<string>('');
+  const [tempCoachName, setTempCoachName] = useState<string>('');
+  const [tempCoachImage, setTempCoachImage] = useState<string>('');
   const [settingError, setSettingError] = useState<string>('');
 
   // Exercise Modal State
@@ -121,6 +128,12 @@ const App: React.FC = () => {
 
     const savedBurnGoal = localStorage.getItem('snapcalorie_burn_goal');
     if (savedBurnGoal) setBurnGoal(parseFloat(savedBurnGoal));
+    
+    const savedCoachName = localStorage.getItem('snapcalorie_coach_name');
+    if (savedCoachName) setCoachName(savedCoachName);
+    
+    const savedCoachImage = localStorage.getItem('snapcalorie_coach_image');
+    if (savedCoachImage) setCoachImage(savedCoachImage);
 
   }, []);
 
@@ -150,6 +163,14 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('snapcalorie_burn_goal', burnGoal.toString());
   }, [burnGoal]);
+
+  useEffect(() => {
+    localStorage.setItem('snapcalorie_coach_name', coachName);
+  }, [coachName]);
+
+  useEffect(() => {
+    localStorage.setItem('snapcalorie_coach_image', coachImage);
+  }, [coachImage]);
 
   // --- Goal Calculation Logic ---
   const calculateGoals = (): DailyGoals => {
@@ -424,6 +445,8 @@ const App: React.FC = () => {
     setTempTargetLbs(targetLbs.toString());
     setTempTargetMonths(targetMonths.toString());
     setTempBurnGoal(burnGoal.toString());
+    setTempCoachName(coachName);
+    setTempCoachImage(coachImage);
     setSettingError('');
     setIsSettingsOpen(true);
   };
@@ -434,6 +457,17 @@ const App: React.FC = () => {
           ? prev.filter(id => id !== sportId) 
           : [...prev, sportId]
       );
+  };
+
+  const handleCoachImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+              setTempCoachImage(reader.result as string);
+          };
+          reader.readAsDataURL(file);
+      }
   };
 
   const saveSettings = () => {
@@ -466,6 +500,10 @@ const App: React.FC = () => {
       
       setGoalType(tempGoalType);
       setFrequentSports(tempSports);
+      
+      if (tempCoachName.trim()) setCoachName(tempCoachName);
+      if (tempCoachImage) setCoachImage(tempCoachImage);
+
       setIsSettingsOpen(false);
   };
 
@@ -496,7 +534,7 @@ const App: React.FC = () => {
             <div className="relative group mb-12">
               <div className="absolute -inset-4 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full opacity-30 group-hover:opacity-50 blur-xl transition duration-1000 animate-tilt"></div>
               <div className="relative w-40 h-40 bg-white/10 backdrop-blur-xl border border-white/20 rounded-full flex items-center justify-center shadow-2xl shadow-black/20 transform transition hover:scale-105 duration-500 overflow-hidden">
-                  <img src={USER_CAT_IMAGE} alt="Coach Oreo" className="w-full h-full object-contain p-2" />
+                  <img src={coachImage} alt={`Coach ${coachName}`} className="w-full h-full object-contain p-2" />
               </div>
               <div className="absolute -right-3 -top-3 bg-yellow-400 text-yellow-900 p-2.5 rounded-full shadow-lg animate-bounce border-2 border-indigo-600">
                   <Sparkles size={24} strokeWidth={2.5} />
@@ -508,7 +546,7 @@ const App: React.FC = () => {
             </h1>
             
             <p className="text-indigo-100 text-lg md:text-xl mb-12 text-center font-light leading-relaxed max-w-xs mx-auto">
-                <span className="font-semibold text-white">Coach Oreo</span> is ready to help you hit your goals.
+                <span className="font-semibold text-white">Coach {coachName}</span> is ready to help you hit your goals.
             </p>
 
             <button 
@@ -530,11 +568,11 @@ const App: React.FC = () => {
         <div className="flex justify-between items-center">
            <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-indigo-100 shadow-sm bg-indigo-50">
-                 <img src={USER_CAT_IMAGE} alt="Coach Oreo" className="w-full h-full object-cover" />
+                 <img src={coachImage} alt={`Coach ${coachName}`} className="w-full h-full object-cover" />
               </div>
               <div>
                   <h1 className="font-bold text-slate-800 leading-tight">Hi, there!</h1>
-                  <p className="text-xs text-slate-500 font-medium">Coach Oreo is watching</p>
+                  <p className="text-xs text-slate-500 font-medium">Coach {coachName} is watching</p>
               </div>
            </div>
            <button 
@@ -666,9 +704,9 @@ const App: React.FC = () => {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-full overflow-hidden border border-slate-200 bg-indigo-50">
-                    <img src={USER_CAT_IMAGE} alt="Coach Oreo" className="w-full h-full object-cover" />
+                    <img src={coachImage} alt={`Coach ${coachName}`} className="w-full h-full object-cover" />
                 </div>
-                <h3 className="text-lg font-semibold text-slate-800">Coach Oreo's Insights</h3>
+                <h3 className="text-lg font-semibold text-slate-800">Coach {coachName}'s Insights</h3>
             </div>
             <span className="text-xs font-medium px-2 py-1 bg-slate-100 text-slate-500 rounded-md">
                 Goal: {goalType === GoalType.LOSE_WEIGHT ? 'Lose Weight' : goalType === GoalType.GAIN_MUSCLE ? 'Gain Muscle' : 'Maintain'}
@@ -779,10 +817,10 @@ const App: React.FC = () => {
             {isAnalyzing && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center z-20 bg-black/40 backdrop-blur-sm text-white">
                     <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-white/20 mb-6 animate-pulse">
-                         <img src={USER_CAT_IMAGE} alt="Coach Oreo" className="w-full h-full object-cover" />
+                         <img src={coachImage} alt={`Coach ${coachName}`} className="w-full h-full object-cover" />
                     </div>
                     <Loader2 size={32} className="animate-spin mb-4 text-indigo-400" />
-                    <p className="font-medium text-lg">Coach Oreo is sniffing...</p>
+                    <p className="font-medium text-lg">Coach {coachName} is sniffing...</p>
                     <p className="text-sm text-white/70">Identifying ingredients & macros</p>
                 </div>
             )}
@@ -961,10 +999,10 @@ const App: React.FC = () => {
   if (view === AppView.LAUNCH) return renderLaunchScreen();
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-slate-50 relative shadow-2xl overflow-hidden flex flex-col">
+    <div className="max-w-md mx-auto h-[100dvh] bg-slate-50 relative shadow-2xl overflow-hidden flex flex-col">
       
       {isExerciseModalOpen && (
-          <div className="absolute inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="absolute inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
               <div className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl animate-in fade-in zoom-in duration-200">
                   <div className="flex justify-between items-center mb-6">
                       <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
@@ -1005,12 +1043,37 @@ const App: React.FC = () => {
       )}
 
       {isSettingsOpen && (
-          <div className="absolute inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="absolute inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
               <div className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto">
-                  <div className="flex justify-between items-center mb-6">
+                  <div className="flex justify-between items-center mb-4">
                       <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Sliders className="text-indigo-600" size={24} /> Customize Plan</h3>
                       <button onClick={() => setIsSettingsOpen(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-500"><X size={20} /></button>
                   </div>
+                  
+                  {/* Coach Persona Section */}
+                  <div className="mb-8 flex flex-col items-center border-b border-slate-100 pb-6">
+                      <label className="relative group cursor-pointer mb-3">
+                          <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-indigo-100 shadow-md">
+                             <img src={tempCoachImage} alt="Coach Avatar" className="w-full h-full object-cover" />
+                          </div>
+                          <div className="absolute inset-0 bg-black/30 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-200">
+                              <Camera className="text-white" size={24} />
+                          </div>
+                          <input type="file" accept="image/*" className="hidden" onChange={handleCoachImageUpload} />
+                      </label>
+                      <div className="flex items-center gap-2 w-full justify-center">
+                          <input 
+                            type="text" 
+                            value={tempCoachName} 
+                            onChange={(e) => setTempCoachName(e.target.value)}
+                            className="text-center text-lg font-bold text-slate-800 border-b-2 border-transparent hover:border-slate-200 focus:border-indigo-500 focus:outline-none bg-transparent w-auto min-w-[100px] transition-colors"
+                            placeholder="Coach Name"
+                          />
+                          <Edit2 size={14} className="text-slate-400" />
+                      </div>
+                      <p className="text-xs text-slate-400 mt-1">Tap image to upload your pet!</p>
+                  </div>
+
                   {settingError && <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-xl flex gap-2 items-center"><AlertTriangle size={16} />{settingError}</div>}
                   <div className="mb-6">
                       <label className="block text-sm font-medium text-slate-600 mb-2">Current Weight (lbs)</label>
