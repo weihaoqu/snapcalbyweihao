@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { Camera, FlipHorizontal, Image as ImageIcon, X } from 'lucide-react';
+import { FlipHorizontal, Image as ImageIcon, X } from 'lucide-react';
 
 interface CameraInputProps {
   onCapture: (imageData: string) => void;
@@ -9,16 +9,24 @@ interface CameraInputProps {
 export const CameraInput: React.FC<CameraInputProps> = ({ onCapture, onClose }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [error, setError] = useState<string>('');
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
-  const [stream, setStream] = useState<MediaStream | null>(null);
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+  };
 
   const startCamera = useCallback(async () => {
+    stopCamera(); // Ensure previous stream is stopped
+
     try {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-      
       const constraints = {
         video: {
           facingMode: facingMode,
@@ -29,7 +37,7 @@ export const CameraInput: React.FC<CameraInputProps> = ({ onCapture, onClose }) 
       };
 
       const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
-      setStream(mediaStream);
+      streamRef.current = mediaStream;
       
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
@@ -46,11 +54,8 @@ export const CameraInput: React.FC<CameraInputProps> = ({ onCapture, onClose }) 
     startCamera();
 
     return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
+      stopCamera();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startCamera]);
 
   const capturePhoto = () => {
@@ -106,8 +111,6 @@ export const CameraInput: React.FC<CameraInputProps> = ({ onCapture, onClose }) 
           const reader = new FileReader();
           reader.onloadend = () => {
               const result = reader.result as string;
-              // Optional: You could also resize uploaded files here using an offscreen canvas
-              // But usually uploads are handled okay. For safety, we pass it through.
               onCapture(result);
           };
           reader.readAsDataURL(file);

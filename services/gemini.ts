@@ -10,17 +10,21 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
  * @param mimeType The mime type of the image (e.g., 'image/jpeg')
  * @param frequentSports Optional list of user's preferred sports to prioritize in suggestions
  * @param analysisType Whether to analyze as general 'food' or specifically a 'drink'
+ * @param userWeight The user's weight in lbs for personalized burn calculations
  */
 export const analyzeFoodImage = async (
   base64Image: string, 
   mimeType: string, 
   frequentSports: string[] = [],
-  analysisType: 'food' | 'drink' = 'food'
+  analysisType: 'food' | 'drink' = 'food',
+  userWeight: number = 150
 ): Promise<FoodAnalysisResult> => {
   try {
     const sportsContext = frequentSports.length > 0 
       ? `For the exercise suggestions, please prioritize these activities if appropriate: ${frequentSports.join(', ')}. Fill remaining slots with other common exercises.` 
       : "Provide 3 different exercise suggestions (e.g., Running, Swimming, Cycling, Walking).";
+    
+    const weightContext = `The user weighs ${userWeight} lbs. Use this specific weight to calculate the estimated duration required to burn the calories.`;
 
     let promptText = "";
 
@@ -37,7 +41,7 @@ export const analyzeFoodImage = async (
         Provide a short description (e.g., "Medium Iced Latte").
         Set 'quantityUnit' to 'ml' and 'itemCount' to the estimated volume (e.g. 350).
         
-        ${sportsContext} Provide estimated duration to burn these calories.`;
+        ${sportsContext} ${weightContext}`;
     } else {
         promptText = `Analyze this image of food or drink. Identify the main dish or items. Estimate the total calories, macronutrients (protein, carbs, fat), and detailed nutrients (sugar, fiber, sodium, potassium, cholesterol) for the visible portion. 
             
@@ -45,7 +49,12 @@ export const analyzeFoodImage = async (
 
         If the food is distinct and countable (e.g., 2 slices of pizza, 3 cookies, 1 chocolate bar), specifically identify the 'itemCount' seen in the image and the 'quantityUnit' (e.g., 'slice', 'cookie', 'bar'). If it's a single dish or amorphous (e.g., bowl of soup, plate of pasta), set 'itemCount' to 1 and 'quantityUnit' to 'serving' or 'bowl'.
 
-        Provide a short, appetizing description. Be realistic with portion sizes. ${sportsContext} Provide the estimated duration in minutes required for an average adult to burn these specific calories. If the image is not food, set the foodName to 'Unknown' and values to 0.`;
+        Provide a short, appetizing description. Be realistic with portion sizes. 
+        
+        ${sportsContext} 
+        ${weightContext} 
+        
+        If the image is not food, set the foodName to 'Unknown' and values to 0.`;
     }
 
     const response = await ai.models.generateContent({
@@ -126,7 +135,7 @@ export const analyzeFoodImage = async (
             },
             exerciseSuggestions: {
               type: Type.ARRAY,
-              description: "3 suggestions for exercises to burn off these calories.",
+              description: "3 suggestions for exercises to burn off these calories based on user weight.",
               items: {
                 type: Type.OBJECT,
                 properties: {

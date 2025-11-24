@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { analyzeFoodImage } from './services/gemini';
 import { CalorieCard, MacroCard } from './components/MacroCharts';
 import { CameraInput } from './components/CameraInput';
@@ -110,6 +110,11 @@ const THEME_STYLES = {
   }
 };
 
+interface CustomSport {
+    id: string;
+    met: number;
+}
+
 const App: React.FC = () => {
   // State
   const [view, setView] = useState<AppView>(AppView.LAUNCH);
@@ -138,6 +143,7 @@ const App: React.FC = () => {
   const [targetLbs, setTargetLbs] = useState<number>(0); // For weight loss only
   const [targetMonths, setTargetMonths] = useState<number>(1); // For weight loss only
   const [frequentSports, setFrequentSports] = useState<string[]>([]);
+  const [customSports, setCustomSports] = useState<CustomSport[]>([]); // User defined sports
   const [burnGoal, setBurnGoal] = useState<number>(400); // Daily calorie burn goal
   
   // Coach Persona State
@@ -156,6 +162,10 @@ const App: React.FC = () => {
   const [tempCoachImage, setTempCoachImage] = useState<string>('');
   const [tempTheme, setTempTheme] = useState<Theme>('light');
   const [settingError, setSettingError] = useState<string>('');
+  
+  // Custom Sport Add State (in Settings)
+  const [newCustomSportName, setNewCustomSportName] = useState('');
+  const [newCustomSportIntensity, setNewCustomSportIntensity] = useState('6'); // Default moderate
 
   // Exercise Modal State
   const [isExerciseModalOpen, setIsExerciseModalOpen] = useState(false);
@@ -205,6 +215,11 @@ const App: React.FC = () => {
       if (savedSports) {
         setFrequentSports(JSON.parse(savedSports));
         setTempSports(JSON.parse(savedSports));
+      }
+      
+      const savedCustomSports = localStorage.getItem('snapcalorie_custom_sports');
+      if (savedCustomSports) {
+        setCustomSports(JSON.parse(savedCustomSports));
       }
 
       const savedGoalType = localStorage.getItem('snapcalorie_goal_type');
@@ -275,6 +290,11 @@ const App: React.FC = () => {
     if (!isLoaded) return;
     localStorage.setItem('snapcalorie_sports', JSON.stringify(frequentSports));
   }, [frequentSports, isLoaded]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    localStorage.setItem('snapcalorie_custom_sports', JSON.stringify(customSports));
+  }, [customSports, isLoaded]);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -535,7 +555,8 @@ const App: React.FC = () => {
     try {
       const base64Data = imageData.split(',')[1];
       const mimeType = imageData.match(/:(.*?);/)?.[1] || 'image/jpeg';
-      const result = await analyzeFoodImage(base64Data, mimeType, frequentSports, analysisType);
+      // Pass the user's weight to the analysis function
+      const result = await analyzeFoodImage(base64Data, mimeType, frequentSports, analysisType, weight || 130);
       setAnalysisResult(result);
       if (result.itemCount && result.itemCount > 0) {
         setCountValue(result.itemCount);
@@ -654,18 +675,35 @@ const App: React.FC = () => {
 
   // Exercise Logic
   const calculateBurnedCalories = (sportId: string, minutes: number) => {
+      // Check standard sports first
       const sport = AVAILABLE_SPORTS.find(s => s.id === sportId);
-      if (!sport || !weight) return 0;
+      
+      let met = 0;
+      if (sport) {
+          met = sport.met;
+      } else {
+          // Check custom sports
+          const custom = customSports.find(s => s.id === sportId);
+          if (custom) {
+              met = custom.met;
+          }
+      }
+
+      if (!met || !weight) return 0;
       const weightKg = weight * 0.453592;
-      return Math.round((sport.met * 3.5 * weightKg) / 200 * minutes);
+      return Math.round((met * 3.5 * weightKg) / 200 * minutes);
   }
 
   useEffect(() => {
      if (isExerciseModalOpen && weight) {
-         const autoCalc = calculateBurnedCalories(selectedExerciseId, exerciseDuration);
-         setExerciseCalories(autoCalc.toString());
+         // Calculate for preset OR custom sports that have a MET
+         const sport = AVAILABLE_SPORTS.find(s => s.id === selectedExerciseId) || customSports.find(s => s.id === selectedExerciseId);
+         if (sport) {
+            const autoCalc = calculateBurnedCalories(selectedExerciseId, exerciseDuration);
+            setExerciseCalories(autoCalc.toString());
+         }
      }
-  }, [selectedExerciseId, exerciseDuration, isExerciseModalOpen, weight]);
+  }, [selectedExerciseId, exerciseDuration, isExerciseModalOpen, weight, customSports]);
 
   const addExerciseLog = () => {
       const burn = parseInt(exerciseCalories) || 0;
@@ -673,7 +711,7 @@ const App: React.FC = () => {
       const newExercise: ExerciseLogItem = {
           id: Date.now().toString(),
           timestamp: Date.now(),
-          activityId: selectedExerciseId,
+          activityId: selectedExerciseId, // Using the name input as ID
           activityName: selectedExerciseId,
           durationMinutes: exerciseDuration,
           caloriesBurned: burn
@@ -760,6 +798,27 @@ const App: React.FC = () => {
               setTempCoachImage(reader.result as string);
           };
           reader.readAsDataURL(file);
+      }
+  };
+  
+  const handleAddCustomSport = () => {
+      if (!newCustomSportName.trim()) return;
+      
+      const newSport: CustomSport = {
+          id: newCustomSportName.trim(),
+          met: parseFloat(newCustomSportIntensity) || 6.0
+      };
+      
+      setCustomSports(prev => [...prev, newSport]);
+      setNewCustomSportName('');
+      setNewCustomSportIntensity('6'); // reset to default
+  };
+  
+  const handleDeleteCustomSport = (sportId: string) => {
+      setCustomSports(prev => prev.filter(s => s.id !== sportId));
+      // Also remove from frequent if present
+      if (tempSports.includes(sportId)) {
+          toggleSport(sportId);
       }
   };
 
@@ -1025,7 +1084,7 @@ const App: React.FC = () => {
                   <h3 className={`text-lg font-semibold ${t.textMain}`}>Fitness & Activity</h3>
                   <p className={`text-xs ${t.textSecondary}`}>Burn calories to earn more food!</p>
               </div>
-              <button onClick={() => setIsExerciseModalOpen(true)} className={`p-2 rounded-xl transition ${theme === 'neon' ? 'bg-neon-pink/20 text-neon-pink hover:bg-neon-pink/40' : 'bg-orange-50 text-orange-600 hover:bg-orange-100'}`}><Plus size={20} /></button>
+              <button onClick={() => { setSelectedExerciseId(''); setIsExerciseModalOpen(true); }} className={`p-2 rounded-xl transition ${theme === 'neon' ? 'bg-neon-pink/20 text-neon-pink hover:bg-neon-pink/40' : 'bg-orange-50 text-orange-600 hover:bg-orange-100'}`}><Plus size={20} /></button>
           </div>
           <div className="flex items-center gap-4 mb-6">
               <div className="relative w-16 h-16 flex-shrink-0">
@@ -1073,7 +1132,7 @@ const App: React.FC = () => {
           ) : (
               <div className={`text-center p-4 border-2 border-dashed rounded-2xl ${theme === 'neon' ? 'border-gray-800' : 'border-slate-100 dark:border-slate-700'}`}>
                   <p className={`text-sm ${t.textMuted}`}>No exercise logged today.</p>
-                  <button onClick={() => setIsExerciseModalOpen(true)} className={`text-sm font-semibold mt-1 ${theme === 'neon' ? 'text-neon-pink' : 'text-indigo-500'}`}>Log a workout</button>
+                  <button onClick={() => { setSelectedExerciseId(''); setIsExerciseModalOpen(true); }} className={`text-sm font-semibold mt-1 ${theme === 'neon' ? 'text-neon-pink' : 'text-indigo-500'}`}>Log a workout</button>
               </div>
           )}
       </div>
@@ -1594,10 +1653,20 @@ const App: React.FC = () => {
                       </h3>
                       <button onClick={() => setIsExerciseModalOpen(false)} className={`p-2 rounded-full ${t.textSecondary} hover:bg-gray-100 dark:hover:bg-slate-700`}><X size={20} /></button>
                   </div>
+                  
                   <div className="mb-6">
-                      <label className={`block text-sm font-medium mb-2 ${t.textSecondary}`}>Activity Type</label>
+                      <label className={`block text-sm font-medium mb-2 ${t.textSecondary}`}>Activity Name</label>
+                      <input 
+                        type="text" 
+                        value={selectedExerciseId} 
+                        onChange={(e) => setSelectedExerciseId(e.target.value)}
+                        placeholder="e.g. Frisbee, Gardening..."
+                        className={`w-full p-4 rounded-2xl focus:outline-none focus:ring-2 font-semibold mb-3 ${t.inputBg}`}
+                      />
+
+                      <label className={`block text-xs font-medium mb-2 ${t.textSecondary}`}>Quick Select</label>
                       <div className="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
-                          {AVAILABLE_SPORTS.map(sport => (
+                          {[...AVAILABLE_SPORTS, ...customSports.map(cs => ({ id: cs.id, met: cs.met, icon: getExerciseIcon(cs.id) }))].map(sport => (
                               <button key={sport.id} onClick={() => setSelectedExerciseId(sport.id)} className={`flex flex-col items-center justify-center p-2 rounded-xl border transition ${selectedExerciseId === sport.id ? (theme === 'neon' ? 'bg-gray-800 border-neon-pink text-neon-pink' : 'bg-orange-50 border-orange-500 text-orange-700') : (theme === 'neon' ? 'bg-black border-gray-700 text-gray-400' : 'bg-white border-slate-100 text-slate-500 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-400')}`}>
                                   <div className={selectedExerciseId === sport.id ? (theme === 'neon' ? 'text-neon-pink' : 'text-orange-500') : (theme === 'neon' ? 'text-gray-500' : 'text-slate-400')}>{sport.icon}</div>
                                   <span className="text-[10px] font-bold mt-1 text-center leading-tight">{sport.id}</span>
@@ -1613,12 +1682,12 @@ const App: React.FC = () => {
                       <input type="range" min="5" max="180" step="5" value={exerciseDuration} onChange={(e) => setExerciseDuration(parseInt(e.target.value))} className={`w-full h-2 rounded-lg appearance-none cursor-pointer ${theme === 'neon' ? 'bg-gray-800 accent-neon-pink' : 'bg-slate-200 accent-orange-500'}`} />
                   </div>
                   <div className="mb-6">
-                      <label className={`block text-sm font-medium mb-2 ${t.textSecondary}`}>Calories Burned (Est.)</label>
+                      <label className={`block text-sm font-medium mb-2 ${t.textSecondary}`}>Calories Burned {(AVAILABLE_SPORTS.find(s => s.id === selectedExerciseId) || customSports.find(s => s.id === selectedExerciseId)) ? '(Est.)' : '(Manual)'}</label>
                       <div className="relative">
-                          <input type="number" value={exerciseCalories} onChange={(e) => setExerciseCalories(e.target.value)} className={`w-full p-4 rounded-2xl focus:outline-none focus:ring-2 text-lg font-bold ${t.inputBg}`} />
+                          <input type="number" value={exerciseCalories} onChange={(e) => setExerciseCalories(e.target.value)} className={`w-full p-4 rounded-2xl focus:outline-none focus:ring-2 text-lg font-bold ${t.inputBg}`} placeholder="0" />
                           <div className={`absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 ${t.textMuted}`}><Flame size={16} /> kcal</div>
                       </div>
-                      {!weight && <p className="text-[10px] text-orange-400 mt-1">Add weight in settings for better accuracy.</p>}
+                      {!(AVAILABLE_SPORTS.find(s => s.id === selectedExerciseId) || customSports.find(s => s.id === selectedExerciseId)) && <p className="text-[10px] text-orange-400 mt-1">Custom activity: Please enter calorie estimate.</p>}
                   </div>
                   <button onClick={addExerciseLog} className={`w-full py-3 font-bold rounded-xl transition active:scale-95 ${theme === 'neon' ? 'bg-neon-pink text-black hover:bg-neon-purple' : 'bg-orange-500 hover:bg-orange-600 text-white shadow-lg shadow-orange-200'}`}>Log Workout</button>
               </div>
@@ -1803,6 +1872,51 @@ const App: React.FC = () => {
                           <p className="text-[10px] mt-2 flex items-center gap-1 text-indigo-400"><Target size={10} /> Max recommended rate: 5 lbs/month</p>
                       </div>
                   )}
+                  
+                  {/* Custom Activities Section */}
+                  <div className="mb-6">
+                      <label className={`block text-sm font-medium mb-3 ${t.textSecondary}`}>Manage Custom Activities</label>
+                      <div className="flex flex-col gap-3 mb-3">
+                          <input 
+                              type="text" 
+                              value={newCustomSportName} 
+                              onChange={(e) => setNewCustomSportName(e.target.value)}
+                              placeholder="Activity Name (e.g. Skiing)"
+                              className={`w-full p-3 rounded-xl border text-sm ${t.inputBg}`}
+                          />
+                          <div className="flex gap-2">
+                              <select 
+                                  value={newCustomSportIntensity} 
+                                  onChange={(e) => setNewCustomSportIntensity(e.target.value)}
+                                  className={`flex-1 p-3 rounded-xl border text-sm bg-transparent ${t.textMain} ${theme === 'neon' ? 'border-neon-green' : 'border-slate-200 dark:border-slate-700'}`}
+                              >
+                                  <option value="3">Light (MET ~3)</option>
+                                  <option value="6">Moderate (MET ~6)</option>
+                                  <option value="9">Vigorous (MET ~9)</option>
+                              </select>
+                              <button 
+                                  onClick={handleAddCustomSport} 
+                                  className={`px-6 py-3 rounded-xl font-bold transition flex items-center justify-center gap-2 ${theme === 'neon' ? 'bg-neon-green text-black hover:bg-neon-green/80' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md'}`}
+                                  disabled={!newCustomSportName.trim()}
+                              >
+                                  <Plus size={18} />
+                                  <span>Add</span>
+                              </button>
+                          </div>
+                      </div>
+                      
+                      {customSports.length > 0 && (
+                          <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto">
+                              {customSports.map((sport) => (
+                                  <div key={sport.id} className={`flex items-center justify-between p-2 rounded-lg border ${theme === 'neon' ? 'bg-gray-900 border-gray-700' : 'bg-slate-50 border-slate-200 dark:bg-slate-700 dark:border-slate-600'}`}>
+                                      <span className={`text-xs font-semibold truncate flex-1 ${t.textMain}`}>{sport.id}</span>
+                                      <button onClick={() => handleDeleteCustomSport(sport.id)} className={`p-1 rounded text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20`}><Trash2 size={12} /></button>
+                                  </div>
+                              ))}
+                          </div>
+                      )}
+                  </div>
+
                   <div className="mb-8">
                       <label className={`block text-sm font-medium mb-3 ${t.textSecondary}`}>Frequent Activities</label>
                       <div className="grid grid-cols-3 gap-2">
