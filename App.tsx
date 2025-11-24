@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { analyzeFoodImage } from './services/gemini';
 import { CalorieCard, MacroCard } from './components/MacroCharts';
 import { CameraInput } from './components/CameraInput';
-import { AppView, FoodAnalysisResult, FoodLogItem, ExerciseLogItem, DailyGoals, GoalType } from './types';
-import { Plus, ChevronLeft, ChevronRight, Check, Loader2, Utensils, ArrowRight, Sparkles, AlertTriangle, AlertOctagon, Settings, X, Sliders, Flame, Timer, Bike, Waves, Footprints, Dumbbell, Lightbulb, Activity, Mountain, Trophy, Wind, Swords, Target, TrendingDown, TrendingUp, Minus, Scale, PieChart, Zap, Calendar, Trash2, Hash, Camera, Upload, Edit2, Save, Share, PlusSquare, MoreVertical, Download, Droplets, GlassWater } from 'lucide-react';
+import { AppView, FoodAnalysisResult, FoodLogItem, ExerciseLogItem, DailyGoals, GoalType, Theme } from './types';
+import { Plus, ChevronLeft, ChevronRight, Check, Loader2, Utensils, ArrowRight, Sparkles, AlertTriangle, AlertOctagon, Settings, X, Sliders, Flame, Timer, Bike, Waves, Footprints, Dumbbell, Lightbulb, Activity, Mountain, Trophy, Wind, Swords, Target, TrendingDown, TrendingUp, Minus, Scale, PieChart, Zap, Calendar, Trash2, Hash, Camera, Upload, Edit2, Save, Share, PlusSquare, MoreVertical, Download, Droplets, GlassWater, Moon, Sun, Monitor } from 'lucide-react';
 
 // Default Goals (Fallback if no weight is set)
 const DEFAULT_GOALS: DailyGoals = {
@@ -52,6 +52,64 @@ const DEFAULT_COACH_IMAGE = "https://raw.githubusercontent.com/Tarikul-Islam-Ani
 const DEFAULT_COACH_NAME = "Oreo";
 const USER_CAT_IMAGE = "https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Animals/Black%20Cat.png";
 
+// Theme Style Dictionary
+const THEME_STYLES = {
+  light: {
+    bgMain: 'bg-slate-50',
+    textMain: 'text-slate-900',
+    textSecondary: 'text-slate-500',
+    textMuted: 'text-slate-400',
+    card: 'bg-white border border-slate-100 shadow-sm',
+    headerBg: 'bg-white border-b border-slate-100 shadow-sm',
+    buttonPrimary: 'bg-indigo-600 text-white shadow-indigo-200 hover:bg-indigo-700',
+    buttonSecondary: 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50',
+    inputBg: 'bg-slate-50 border-slate-200 focus:ring-indigo-500 text-slate-800',
+    iconBg: 'bg-indigo-50 text-indigo-700',
+    modalBg: 'bg-white',
+    accentColor: 'indigo',
+    waterCard: 'bg-cyan-50 border-cyan-100',
+    waterText: 'text-cyan-900',
+    alertHigh: 'bg-red-50 border-red-500 text-red-700',
+    font: 'font-sans'
+  },
+  dark: {
+    bgMain: 'bg-slate-900',
+    textMain: 'text-slate-100',
+    textSecondary: 'text-slate-400',
+    textMuted: 'text-slate-500',
+    card: 'bg-slate-800 border border-slate-700 shadow-none',
+    headerBg: 'bg-slate-800 border-b border-slate-700 shadow-none',
+    buttonPrimary: 'bg-indigo-500 text-white shadow-none hover:bg-indigo-600',
+    buttonSecondary: 'bg-slate-700 text-slate-300 border border-slate-600 hover:bg-slate-600',
+    inputBg: 'bg-slate-900 border-slate-700 focus:ring-indigo-500 text-slate-100',
+    iconBg: 'bg-slate-700 text-indigo-400',
+    modalBg: 'bg-slate-800',
+    accentColor: 'indigo',
+    waterCard: 'bg-slate-800 border-cyan-900',
+    waterText: 'text-cyan-300',
+    alertHigh: 'bg-red-900/20 border-red-800 text-red-300',
+    font: 'font-sans'
+  },
+  neon: {
+    bgMain: 'bg-neon-black',
+    textMain: 'text-neon-green',
+    textSecondary: 'text-neon-blue',
+    textMuted: 'text-neon-pink/70',
+    card: 'bg-neon-black border-2 border-neon-pink shadow-neon-pink',
+    headerBg: 'bg-neon-black border-b-2 border-neon-green shadow-neon-green',
+    buttonPrimary: 'bg-neon-pink text-black font-bold shadow-neon-pink hover:bg-neon-purple border-2 border-transparent',
+    buttonSecondary: 'bg-black text-neon-blue border-2 border-neon-blue hover:bg-neon-blue hover:text-black font-bold',
+    inputBg: 'bg-black border-2 border-neon-green focus:ring-neon-pink text-neon-green placeholder-neon-green/50',
+    iconBg: 'bg-black border border-neon-green text-neon-green shadow-neon-green',
+    modalBg: 'bg-black border-2 border-neon-blue',
+    accentColor: 'neon-green',
+    waterCard: 'bg-black border-2 border-neon-blue shadow-neon-blue',
+    waterText: 'text-neon-blue',
+    alertHigh: 'bg-black border-2 border-red-500 text-red-500 shadow-[0_0_10px_red]',
+    font: 'font-retro tracking-wider'
+  }
+};
+
 const App: React.FC = () => {
   // State
   const [view, setView] = useState<AppView>(AppView.LAUNCH);
@@ -63,6 +121,12 @@ const App: React.FC = () => {
   const [analysisType, setAnalysisType] = useState<'food' | 'drink'>('food'); // Track whether scanning food or drink
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   
+  // Data Loading State
+  const [isLoaded, setIsLoaded] = useState(false);
+  
+  // Theme State
+  const [theme, setTheme] = useState<Theme>('light');
+
   // Portion Control State
   const [portionSize, setPortionSize] = useState<number>(1.0); // Slider value (multiplier)
   const [countValue, setCountValue] = useState<number>(1); // Count input value
@@ -88,9 +152,9 @@ const App: React.FC = () => {
   const [tempTargetMonths, setTempTargetMonths] = useState<string>('');
   const [tempSports, setTempSports] = useState<string[]>([]);
   const [tempBurnGoal, setTempBurnGoal] = useState<string>('');
-  const [tempWaterGoal, setTempWaterGoal] = useState<string>('');
   const [tempCoachName, setTempCoachName] = useState<string>('');
   const [tempCoachImage, setTempCoachImage] = useState<string>('');
+  const [tempTheme, setTempTheme] = useState<Theme>('light');
   const [settingError, setSettingError] = useState<string>('');
 
   // Exercise Modal State
@@ -117,6 +181,8 @@ const App: React.FC = () => {
   // Install Prompt State
   const [showInstallHelp, setShowInstallHelp] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+
+  const t = THEME_STYLES[theme];
 
   // Load data from local storage on mount
   useEffect(() => {
@@ -159,61 +225,87 @@ const App: React.FC = () => {
       const savedCoachImage = localStorage.getItem('snapcalorie_coach_image');
       if (savedCoachImage) setCoachImage(savedCoachImage);
 
+      const savedTheme = localStorage.getItem('snapcalorie_theme');
+      if (savedTheme) {
+        setTheme(savedTheme as Theme);
+        setTempTheme(savedTheme as Theme);
+      }
+
+      const hasLaunched = localStorage.getItem('snapcalorie_has_launched');
+      if (hasLaunched === 'true') {
+        setView(AppView.DASHBOARD);
+      }
+
       // Check if running in standalone mode (installed)
       if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true) {
           setIsStandalone(true);
       }
     } catch (e) {
       console.error("Failed to load data from storage", e);
+    } finally {
+      setIsLoaded(true);
     }
   }, []);
 
-  // Persistence Effects - Wrapped in try/catch to prevent crashes if storage is full
+  // Persistence Effects - Only run if isLoaded is true to prevent overwriting with initial empty state
   useEffect(() => {
+    if (!isLoaded) return;
     try {
       localStorage.setItem('snapcalorie_logs', JSON.stringify(logs));
     } catch (e) {
       console.warn("Storage full: Could not save food logs", e);
     }
-  }, [logs]);
+  }, [logs, isLoaded]);
 
   useEffect(() => {
+    if (!isLoaded) return;
     try {
       localStorage.setItem('snapcalorie_exercise_logs', JSON.stringify(exerciseLogs));
     } catch (e) {
       console.warn("Storage full: Could not save exercise logs", e);
     }
-  }, [exerciseLogs]);
+  }, [exerciseLogs, isLoaded]);
 
   useEffect(() => {
+    if (!isLoaded) return;
     if (weight) localStorage.setItem('snapcalorie_weight', weight.toString());
-  }, [weight]);
+  }, [weight, isLoaded]);
 
   useEffect(() => {
+    if (!isLoaded) return;
     localStorage.setItem('snapcalorie_sports', JSON.stringify(frequentSports));
-  }, [frequentSports]);
+  }, [frequentSports, isLoaded]);
 
   useEffect(() => {
+    if (!isLoaded) return;
     localStorage.setItem('snapcalorie_goal_type', goalType);
     localStorage.setItem('snapcalorie_target_lbs', targetLbs.toString());
     localStorage.setItem('snapcalorie_target_months', targetMonths.toString());
-  }, [goalType, targetLbs, targetMonths]);
+  }, [goalType, targetLbs, targetMonths, isLoaded]);
 
   useEffect(() => {
+    if (!isLoaded) return;
     localStorage.setItem('snapcalorie_burn_goal', burnGoal.toString());
-  }, [burnGoal]);
+  }, [burnGoal, isLoaded]);
 
   useEffect(() => {
+    if (!isLoaded) return;
     localStorage.setItem('snapcalorie_coach_name', coachName);
-  }, [coachName]);
+  }, [coachName, isLoaded]);
 
   useEffect(() => {
+    if (!isLoaded) return;
     try {
       localStorage.setItem('snapcalorie_coach_image', coachImage);
     } catch(e) {
       console.warn("Storage full: Could not save coach image", e);
     }
-  }, [coachImage]);
+  }, [coachImage, isLoaded]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    localStorage.setItem('snapcalorie_theme', theme);
+  }, [theme, isLoaded]);
 
   // --- Goal Calculation Logic ---
   const calculateGoals = (): DailyGoals => {
@@ -296,6 +388,60 @@ const App: React.FC = () => {
         dailyAlerts.push(`${key.charAt(0).toUpperCase() + key.slice(1)}`);
      }
   });
+
+  // --- Export & Share Functions ---
+  const exportCSV = () => {
+    // Headers
+    const foodHeader = "Date,Time,Category,Item,Description,Calories,Protein(g),Carbs(g),Fat(g),Sugar(g),Fiber(g),Sodium(mg),Water(ml)\n";
+    
+    // Food Rows
+    const foodRows = logs.map(log => {
+        const date = new Date(log.timestamp);
+        const safeDesc = (log.description || '').replace(/,/g, ' '); 
+        const safeName = (log.foodName || '').replace(/,/g, ' ');
+        return `${date.toLocaleDateString()},${date.toLocaleTimeString()},Food,${safeName},${safeDesc},${log.calories},${log.protein},${log.carbs},${log.fat},${log.sugar},${log.fiber},${log.sodium},${log.water}`;
+    }).join('\n');
+
+    // Exercise Header
+    const exerciseHeader = "\n\nDate,Time,Category,Activity,Duration(min),Calories Burned\n";
+    
+    // Exercise Rows
+    const exerciseRows = exerciseLogs.map(log => {
+        const date = new Date(log.timestamp);
+        return `${date.toLocaleDateString()},${date.toLocaleTimeString()},Exercise,${log.activityName},${log.durationMinutes},${log.caloriesBurned}`;
+    }).join('\n');
+
+    const csvContent = "data:text/csv;charset=utf-8," + encodeURIComponent(foodHeader + foodRows + exerciseHeader + exerciseRows);
+    
+    const link = document.createElement("a");
+    link.setAttribute("href", csvContent);
+    link.setAttribute("download", `snapcalorie_export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const shareProgress = async () => {
+    const text = `Check out my progress on SnapCalorie! 💪\n\nToday:\n🔥 ${totalCaloriesBurned} kcal burned\n🥗 ${dailyTotals.calories} kcal consumed\n💧 ${dailyTotals.water} ml water\n\nDownload the app to track your goals!`;
+    
+    if (navigator.share) {
+        try {
+            await navigator.share({
+                title: 'My SnapCalorie Stats',
+                text: text,
+            });
+        } catch (err) {
+            console.log('Share canceled');
+        }
+    } else {
+        try {
+            await navigator.clipboard.writeText(text);
+            alert("Progress copied to clipboard!");
+        } catch (err) {
+            alert("Sharing not supported on this device.");
+        }
+    }
+  };
 
   const getSmartInsights = () => {
     const caloriePct = dailyTotals.calories / (effectiveCalorieGoal || 1);
@@ -591,9 +737,9 @@ const App: React.FC = () => {
     setTempTargetLbs(targetLbs.toString());
     setTempTargetMonths(targetMonths.toString());
     setTempBurnGoal(burnGoal.toString());
-    setTempWaterGoal(currentGoals.water.toString());
     setTempCoachName(coachName);
     setTempCoachImage(coachImage);
+    setTempTheme(theme);
     setSettingError('');
     setIsSettingsOpen(true);
   };
@@ -650,58 +796,70 @@ const App: React.FC = () => {
       
       if (tempCoachName.trim()) setCoachName(tempCoachName);
       if (tempCoachImage) setCoachImage(tempCoachImage);
+      
+      setTheme(tempTheme);
 
       setIsSettingsOpen(false);
   };
 
   const getExerciseIcon = (activity: string) => {
       const lower = activity.toLowerCase();
-      if (lower.includes('run')) return <Footprints className="text-emerald-500" />;
-      if (lower.includes('jog')) return <Wind className="text-emerald-400" />;
-      if (lower.includes('hik') || lower.includes('mountain')) return <Mountain className="text-stone-500" />;
-      if (lower.includes('cycl') || lower.includes('bik')) return <Bike className="text-blue-500" />;
-      if (lower.includes('swim') || lower.includes('water')) return <Waves className="text-cyan-500" />;
-      if (lower.includes('walk')) return <Footprints className="text-amber-500" />;
-      if (lower.includes('yoga') || lower.includes('pilates')) return <Sparkles className="text-purple-500" />;
-      if (lower.includes('hiit')) return <Flame className="text-orange-500" />;
-      if (lower.includes('box') || lower.includes('fight') || lower.includes('combat')) return <Swords className="text-red-500" />;
-      if (lower.includes('basketball') || lower.includes('tennis') || lower.includes('pickleball') || lower.includes('badminton') || lower.includes('table tennis') || lower.includes('ping pong') || lower.includes('volleyball') || lower.includes('baseball') || lower.includes('sport')) return <Trophy className="text-yellow-500" />;
-      return <Dumbbell className="text-indigo-500" />;
+      if (lower.includes('run')) return <Footprints className={theme === 'neon' ? 'text-neon-pink' : 'text-emerald-500'} />;
+      if (lower.includes('jog')) return <Wind className={theme === 'neon' ? 'text-neon-blue' : 'text-emerald-400'} />;
+      if (lower.includes('hik') || lower.includes('mountain')) return <Mountain className={theme === 'neon' ? 'text-neon-green' : 'text-stone-500'} />;
+      if (lower.includes('cycl') || lower.includes('bik')) return <Bike className={theme === 'neon' ? 'text-neon-purple' : 'text-blue-500'} />;
+      if (lower.includes('swim') || lower.includes('water')) return <Waves className={theme === 'neon' ? 'text-neon-blue' : 'text-cyan-500'} />;
+      if (lower.includes('walk')) return <Footprints className={theme === 'neon' ? 'text-neon-yellow' : 'text-amber-500'} />;
+      if (lower.includes('yoga') || lower.includes('pilates')) return <Sparkles className={theme === 'neon' ? 'text-neon-pink' : 'text-purple-500'} />;
+      if (lower.includes('hiit')) return <Flame className={theme === 'neon' ? 'text-orange-500' : 'text-orange-500'} />;
+      if (lower.includes('box') || lower.includes('fight') || lower.includes('combat')) return <Swords className={theme === 'neon' ? 'text-red-500' : 'text-red-500'} />;
+      if (lower.includes('basketball') || lower.includes('tennis') || lower.includes('pickleball') || lower.includes('badminton') || lower.includes('table tennis') || lower.includes('ping pong') || lower.includes('volleyball') || lower.includes('baseball') || lower.includes('sport')) return <Trophy className={theme === 'neon' ? 'text-neon-yellow' : 'text-yellow-500'} />;
+      return <Dumbbell className={theme === 'neon' ? 'text-indigo-500' : 'text-indigo-500'} />;
   }
+
+  const handleGetStarted = () => {
+    localStorage.setItem('snapcalorie_has_launched', 'true');
+    setView(AppView.DASHBOARD);
+  };
 
   // View: Launch Screen
   const renderLaunchScreen = () => (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-between bg-indigo-600 text-white overflow-hidden pb-safe">
+    <div className={`fixed inset-0 z-50 flex flex-col items-center justify-between overflow-hidden pb-safe ${theme === 'neon' ? 'bg-black text-neon-green font-retro' : 'bg-indigo-600 text-white'}`}>
         <div className="absolute inset-0 opacity-40">
-            <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-500 rounded-full blur-3xl animate-pulse mix-blend-screen"></div>
-            <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-blue-500 rounded-full blur-3xl animate-pulse mix-blend-screen" style={{ animationDelay: '2s' }}></div>
+            {theme === 'neon' ? (
+                <>
+                   <div className="absolute top-[10%] left-[10%] w-[300px] h-[300px] bg-neon-pink/30 rounded-full blur-[100px] animate-pulse"></div>
+                   <div className="absolute bottom-[20%] right-[10%] w-[400px] h-[400px] bg-neon-blue/30 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '2s' }}></div>
+                </>
+            ) : (
+                <>
+                    <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-500 rounded-full blur-3xl animate-pulse mix-blend-screen"></div>
+                    <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-blue-500 rounded-full blur-3xl animate-pulse mix-blend-screen" style={{ animationDelay: '2s' }}></div>
+                </>
+            )}
         </div>
 
         <div className="relative z-10 flex-1 flex flex-col items-center justify-center w-full max-w-md px-8">
             <div className="relative group mb-12">
-              <div className="absolute -inset-4 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full opacity-30 group-hover:opacity-50 blur-xl transition duration-1000 animate-tilt"></div>
-              <div className="relative w-40 h-40 bg-white/10 backdrop-blur-xl border border-white/20 rounded-full flex items-center justify-center shadow-2xl shadow-black/20 transform transition hover:scale-105 duration-500 overflow-hidden">
+              <div className={`absolute -inset-4 rounded-full opacity-30 group-hover:opacity-50 blur-xl transition duration-1000 animate-tilt ${theme === 'neon' ? 'bg-gradient-to-r from-neon-pink to-neon-blue' : 'bg-gradient-to-r from-pink-500 to-purple-600'}`}></div>
+              <div className={`relative w-40 h-40 backdrop-blur-xl border rounded-full flex items-center justify-center shadow-2xl transform transition hover:scale-105 duration-500 overflow-hidden ${theme === 'neon' ? 'bg-black/30 border-neon-green shadow-neon-green/30' : 'bg-white/10 border-white/20 shadow-black/20'}`}>
                   <img src={coachImage} alt={`Coach ${coachName}`} className="w-full h-full object-contain p-2" />
-              </div>
-              <div className="absolute -right-3 -top-3 bg-yellow-400 text-yellow-900 p-2.5 rounded-full shadow-lg animate-bounce border-2 border-indigo-600">
-                  <Sparkles size={24} strokeWidth={2.5} />
               </div>
             </div>
             
-            <h1 className="text-5xl md:text-6xl font-bold mb-4 tracking-tight text-center drop-shadow-xl bg-clip-text text-transparent bg-gradient-to-br from-white to-indigo-100">
+            <h1 className={`text-5xl md:text-6xl font-bold mb-4 tracking-tight text-center drop-shadow-xl ${theme === 'neon' ? 'text-neon-pink neon-glow' : 'bg-clip-text text-transparent bg-gradient-to-br from-white to-indigo-100'}`}>
                 SnapCalorie
             </h1>
             
-            <p className="text-indigo-100 text-lg md:text-xl mb-12 text-center font-light leading-relaxed max-w-xs mx-auto">
-                <span className="font-semibold text-white">Coach {coachName}</span> is ready to help you hit your goals.
+            <p className={`text-lg md:text-xl mb-12 text-center font-light leading-relaxed max-w-xs mx-auto ${theme === 'neon' ? 'text-neon-blue' : 'text-indigo-100'}`}>
+                <span className={`font-semibold ${theme === 'neon' ? 'text-neon-green' : 'text-white'}`}>Coach {coachName}</span> is ready to help you hit your goals.
             </p>
 
             <div className="flex flex-col gap-4 w-full max-w-xs">
               <button 
-                  onClick={() => setView(AppView.DASHBOARD)}
-                  className="group relative w-full bg-white text-indigo-600 px-8 py-5 rounded-2xl font-bold text-xl shadow-2xl shadow-indigo-900/40 flex items-center justify-center gap-3 overflow-hidden transition-all hover:shadow-indigo-900/50 hover:scale-[1.02] active:scale-[0.98]"
+                  onClick={handleGetStarted}
+                  className={`group relative w-full px-8 py-5 rounded-2xl font-bold text-xl flex items-center justify-center gap-3 overflow-hidden transition-all hover:scale-[1.02] active:scale-[0.98] ${theme === 'neon' ? 'bg-neon-pink text-black shadow-neon-pink hover:bg-neon-purple' : 'bg-white text-indigo-600 shadow-2xl shadow-indigo-900/40'}`}
               >
-                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-50 to-white opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   <span className="relative z-10">Get Started</span>
                   <ArrowRight size={24} className="relative z-10 group-hover:translate-x-1 transition-transform" />
               </button>
@@ -709,7 +867,7 @@ const App: React.FC = () => {
               {!isStandalone && (
                 <button 
                    onClick={() => setShowInstallHelp(true)}
-                   className="flex items-center justify-center gap-2 text-indigo-200 hover:text-white transition py-2 rounded-xl"
+                   className={`flex items-center justify-center gap-2 transition py-2 rounded-xl ${theme === 'neon' ? 'text-neon-blue hover:text-white' : 'text-indigo-200 hover:text-white'}`}
                 >
                    <Download size={18} />
                    <span className="text-sm font-medium">Install App</span>
@@ -721,51 +879,58 @@ const App: React.FC = () => {
   );
 
   // View: Dashboard
-  const renderDashboard = () => (
+  const renderDashboard = () => {
+    // Calculate water reminder condition
+    const waterPct = dailyTotals.water / (currentGoals.water || 1);
+    const currentHour = new Date().getHours();
+    // Reminder if past 4PM (16:00) and less than 50% goal met
+    const showWaterReminder = currentHour >= 16 && waterPct < 0.5;
+
+    return (
     <div className="pb-10">
-      <header className="mb-6 bg-white p-4 -mx-6 -mt-8 pt-safe sticky top-0 z-20 shadow-sm border-b border-slate-100">
+      <header className={`mb-6 p-4 -mx-6 -mt-8 pt-safe sticky top-0 z-20 ${t.headerBg}`}>
         <div className="flex justify-between items-center mt-8">
            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-indigo-100 shadow-sm bg-indigo-50">
+              <div className={`w-12 h-12 rounded-full overflow-hidden border-2 shadow-sm ${theme === 'neon' ? 'border-neon-green' : 'border-indigo-100 bg-indigo-50'}`}>
                  <img src={coachImage} alt={`Coach ${coachName}`} className="w-full h-full object-cover" />
               </div>
               <div>
-                  <h1 className="font-bold text-slate-800 leading-tight">Hi, there!</h1>
-                  <p className="text-xs text-slate-500 font-medium">Coach {coachName} is watching</p>
+                  <h1 className={`font-bold leading-tight ${t.textMain}`}>Hi, there!</h1>
+                  <p className={`text-xs font-medium ${t.textSecondary}`}>Coach {coachName} is watching</p>
               </div>
            </div>
            <button 
               onClick={openSettings}
-              className="flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 pl-3 pr-4 py-2 rounded-full transition-colors border border-indigo-100 group"
+              className={`flex items-center gap-2 pl-3 pr-4 py-2 rounded-full transition-colors group ${theme === 'neon' ? 'bg-black border border-neon-blue text-neon-blue hover:bg-neon-blue hover:text-black' : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-100'}`}
            >
-              <div className="bg-white p-1 rounded-full shadow-sm">
-                <Sliders size={16} className="text-indigo-600" />
+              <div className={`p-1 rounded-full shadow-sm ${theme === 'neon' ? 'bg-black' : 'bg-white'}`}>
+                <Sliders size={16} className={theme === 'neon' ? 'text-neon-blue' : 'text-indigo-600'} />
               </div>
               <span className="font-bold text-sm">My Plan</span>
            </button>
         </div>
       </header>
       
-      <div className="flex items-center justify-between bg-white p-2 rounded-2xl border border-slate-100 shadow-sm mb-6">
-          <button onClick={() => navigateDate(-1)} className="p-3 hover:bg-slate-50 text-slate-500 rounded-xl transition"><ChevronLeft size={20} /></button>
+      <div className={`flex items-center justify-between p-2 rounded-2xl mb-6 ${t.card}`}>
+          <button onClick={() => navigateDate(-1)} className={theme === 'neon' ? 'text-neon-pink hover:bg-neon-pink/20' : 'hover:bg-slate-50 text-slate-500'}><ChevronLeft size={20} /></button>
           <div className="flex flex-col items-center">
-            <h2 className="text-lg font-bold text-slate-800 leading-tight">
+            <h2 className={`text-lg font-bold leading-tight ${t.textMain}`}>
                 {isToday ? 'Today' : selectedDate.toLocaleDateString(undefined, { weekday: 'long' })}
             </h2>
-            <p className="text-xs text-slate-400 font-medium">
+            <p className={`text-xs font-medium ${t.textSecondary}`}>
                 {selectedDate.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}
             </p>
           </div>
-          <button onClick={() => navigateDate(1)} disabled={isToday} className={`p-3 rounded-xl transition ${isToday ? 'text-slate-200 cursor-not-allowed' : 'hover:bg-slate-50 text-slate-500'}`}><ChevronRight size={20} /></button>
+          <button onClick={() => navigateDate(1)} disabled={isToday} className={isToday ? (theme === 'neon' ? 'text-gray-800' : 'text-slate-200 cursor-not-allowed') : (theme === 'neon' ? 'text-neon-pink hover:bg-neon-pink/20' : 'hover:bg-slate-50 text-slate-500')}><ChevronRight size={20} /></button>
       </div>
 
       {dailyAlerts.length > 0 && (
-        <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-xl shadow-sm animate-pulse">
+        <div className={`mb-6 p-4 rounded-r-xl shadow-sm animate-pulse border-l-4 ${t.alertHigh}`}>
            <div className="flex items-start gap-3">
-              <AlertOctagon className="text-red-500 shrink-0 mt-1" size={20} />
+              <AlertOctagon className="shrink-0 mt-1" size={20} />
               <div>
-                 <h3 className="font-bold text-red-800 text-sm uppercase tracking-wide">Daily Limit Exceeded</h3>
-                 <p className="text-red-700 text-sm mt-1">You have exceeded 200% of your daily limit for: <span className="font-semibold">{dailyAlerts.join(", ")}</span></p>
+                 <h3 className="font-bold text-sm uppercase tracking-wide">Daily Limit Exceeded</h3>
+                 <p className="text-sm mt-1">You have exceeded 200% of your daily limit for: <span className="font-semibold">{dailyAlerts.join(", ")}</span></p>
               </div>
            </div>
         </div>
@@ -773,72 +938,80 @@ const App: React.FC = () => {
 
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-3">
-            <Zap size={18} className="text-amber-500 fill-amber-500" />
-            <h3 className="font-semibold text-slate-700 text-sm uppercase tracking-wider">Quick Add</h3>
+            <Zap size={18} className={theme === 'neon' ? 'text-neon-yellow fill-neon-yellow' : 'text-amber-500 fill-amber-500'} />
+            <h3 className={`font-semibold text-sm uppercase tracking-wider ${t.textMain}`}>Quick Add</h3>
         </div>
         <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide -mx-6 px-6">
             {QUICK_MEALS.map((meal) => (
                 <button 
                     key={meal.name}
                     onClick={() => initiateQuickAdd(meal)}
-                    className="flex flex-col items-center bg-white p-3 rounded-2xl min-w-[100px] border border-slate-100 shadow-sm hover:border-indigo-200 hover:shadow-md transition active:scale-95 flex-shrink-0"
+                    className={`flex flex-col items-center p-3 rounded-2xl min-w-[100px] transition active:scale-95 flex-shrink-0 ${t.card} hover:border-opacity-50`}
                 >
                     <span className="text-2xl mb-1">{meal.icon}</span>
-                    <span className="text-xs font-bold text-slate-700">{meal.name}</span>
-                    <span className="text--[10px] text-slate-400">{meal.calories} kcal</span>
+                    <span className={`text-xs font-bold ${t.textMain}`}>{meal.name}</span>
+                    <span className={`text-[10px] ${t.textSecondary}`}>{meal.calories} kcal</span>
                 </button>
             ))}
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 mb-6">
-        <CalorieCard consumed={dailyTotals.calories} goal={effectiveCalorieGoal} />
+        <CalorieCard consumed={dailyTotals.calories} goal={effectiveCalorieGoal} theme={theme} />
         <button 
             onClick={() => startAnalysis('food')}
-            className="w-full bg-indigo-600 text-white p-4 rounded-3xl flex items-center justify-center gap-3 font-bold shadow-xl shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95 text-lg group"
+            className={`w-full p-4 rounded-3xl flex items-center justify-center gap-3 font-bold transition-all active:scale-95 text-lg group ${t.buttonPrimary}`}
         >
-            <div className="bg-white/20 p-2 rounded-full group-hover:bg-white/30 transition">
+            <div className={`p-2 rounded-full transition ${theme === 'neon' ? 'bg-black text-neon-pink' : 'bg-white/20 group-hover:bg-white/30'}`}>
                 <Plus size={28} />
             </div>
             <span>Log New Meal</span>
         </button>
-        <MacroCard totals={dailyTotals} goals={currentGoals} />
+        <MacroCard totals={dailyTotals} goals={currentGoals} theme={theme} />
       </div>
 
       {/* Water / Hydration Section */}
-      <div className="mb-6 bg-cyan-50 p-5 rounded-3xl shadow-sm border border-cyan-100 relative overflow-hidden">
+      <div className={`mb-6 p-5 rounded-3xl shadow-sm relative overflow-hidden ${t.waterCard}`}>
          <div className="relative z-10">
             <div className="flex justify-between items-center mb-4">
                 <div>
-                    <h3 className="text-lg font-semibold text-cyan-900 flex items-center gap-2"><Droplets size={20} className="fill-cyan-500 text-cyan-500"/> Hydration</h3>
-                    <p className="text-xs text-cyan-600">Daily Goal: {currentGoals.water} ml</p>
+                    <h3 className={`text-lg font-semibold flex items-center gap-2 ${t.waterText}`}><Droplets size={20} className={theme === 'neon' ? 'fill-neon-blue text-neon-blue' : 'fill-cyan-500 text-cyan-500'}/> Hydration</h3>
+                    <p className={`text-xs opacity-70 ${t.waterText}`}>Daily Goal: {currentGoals.water} ml</p>
                 </div>
                 <div className="text-right">
-                    <p className="text-2xl font-bold text-cyan-800">{dailyTotals.water} <span className="text-sm font-medium text-cyan-600">ml</span></p>
+                    <p className={`text-2xl font-bold ${t.waterText}`}>{dailyTotals.water} <span className="text-sm font-medium opacity-70">ml</span></p>
                 </div>
             </div>
-            <div className="w-full bg-cyan-200 rounded-full h-4 mb-4 overflow-hidden border border-cyan-300">
+
+            {showWaterReminder && (
+                <div className={`mb-4 px-3 py-2 rounded-xl flex items-center gap-2 ${theme === 'neon' ? 'bg-black border border-neon-blue text-neon-blue shadow-[0_0_5px_cyan]' : 'bg-cyan-100/50 text-cyan-800 border border-cyan-200'}`}>
+                    <AlertTriangle size={14} className="shrink-0 animate-pulse" />
+                    <span className="text-xs font-bold">Drink up! You're a bit behind schedule.</span>
+                </div>
+            )}
+
+            <div className={`w-full rounded-full h-4 mb-4 overflow-hidden border ${theme === 'neon' ? 'bg-black border-neon-blue' : 'bg-cyan-200 border-cyan-300'}`}>
                 <div 
-                    className="h-full bg-cyan-500 rounded-full transition-all duration-700 ease-out flex items-center justify-end pr-2"
+                    className={`h-full rounded-full transition-all duration-700 ease-out flex items-center justify-end pr-2 ${theme === 'neon' ? 'bg-neon-blue shadow-neon-blue' : 'bg-cyan-500'}`}
                     style={{ width: `${Math.min(100, (dailyTotals.water / currentGoals.water) * 100)}%` }}
                 >
                     {dailyTotals.water > 100 && <span className="text-[9px] text-white font-bold opacity-80">{Math.round((dailyTotals.water / currentGoals.water) * 100)}%</span>}
                 </div>
             </div>
             <div className="grid grid-cols-4 gap-2">
-                <button onClick={() => addWaterLog(250, 'Water (Cup)')} className="col-span-1 bg-white hover:bg-cyan-100 py-2 rounded-xl flex flex-col items-center justify-center border border-cyan-100 shadow-sm active:scale-95 transition">
-                    <span className="text-xs font-bold text-cyan-700">+250</span>
-                    <span className="text-[10px] text-cyan-500">ml</span>
+                <button onClick={() => addWaterLog(250, 'Water (Cup)')} className={`col-span-1 py-2 rounded-xl flex flex-col items-center justify-center border shadow-sm active:scale-95 transition ${t.card}`}>
+                    <span className={`text-xs font-bold ${t.textMain}`}>+250</span>
+                    <span className={`text-[10px] ${t.textSecondary}`}>ml</span>
                 </button>
-                <button onClick={() => addWaterLog(500, 'Water (Bottle)')} className="col-span-1 bg-white hover:bg-cyan-100 py-2 rounded-xl flex flex-col items-center justify-center border border-cyan-100 shadow-sm active:scale-95 transition">
-                    <span className="text-xs font-bold text-cyan-700">+500</span>
-                    <span className="text-[10px] text-cyan-500">ml</span>
+                <button onClick={() => addWaterLog(500, 'Water (Bottle)')} className={`col-span-1 py-2 rounded-xl flex flex-col items-center justify-center border shadow-sm active:scale-95 transition ${t.card}`}>
+                    <span className={`text-xs font-bold ${t.textMain}`}>+500</span>
+                    <span className={`text-[10px] ${t.textSecondary}`}>ml</span>
                 </button>
-                <button onClick={() => setIsWaterModalOpen(true)} className="col-span-1 bg-white hover:bg-cyan-100 py-2 rounded-xl flex flex-col items-center justify-center border border-cyan-100 shadow-sm active:scale-95 transition">
-                    <Edit2 size={16} className="text-cyan-500 mb-1" />
-                    <span className="text-[10px] text-cyan-600 font-bold">Custom</span>
+                <button onClick={() => setIsWaterModalOpen(true)} className={`col-span-1 py-2 rounded-xl flex flex-col items-center justify-center border shadow-sm active:scale-95 transition ${t.card}`}>
+                    <Edit2 size={16} className={theme === 'neon' ? 'text-neon-pink' : 'text-cyan-500 mb-1'} />
+                    <span className={`text-[10px] font-bold ${t.textMain}`}>Custom</span>
                 </button>
-                <button onClick={() => startAnalysis('drink')} className="col-span-1 bg-cyan-600 hover:bg-cyan-700 py-2 rounded-xl flex flex-col items-center justify-center border border-cyan-600 shadow-sm active:scale-95 transition text-white">
+                <button onClick={() => startAnalysis('drink')} className={`col-span-1 py-2 rounded-xl flex flex-col items-center justify-center border shadow-sm active:scale-95 transition ${t.buttonPrimary}`}>
                     <Camera size={16} className="mb-1" />
                     <span className="text-[10px] font-bold">Scan</span>
                 </button>
@@ -846,32 +1019,32 @@ const App: React.FC = () => {
          </div>
       </div>
       
-      <div className="mb-6 bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
+      <div className={`mb-6 p-5 rounded-3xl ${t.card}`}>
           <div className="flex justify-between items-center mb-4">
               <div>
-                  <h3 className="text-lg font-semibold text-slate-700">Fitness & Activity</h3>
-                  <p className="text-xs text-slate-400">Burn calories to earn more food!</p>
+                  <h3 className={`text-lg font-semibold ${t.textMain}`}>Fitness & Activity</h3>
+                  <p className={`text-xs ${t.textSecondary}`}>Burn calories to earn more food!</p>
               </div>
-              <button onClick={() => setIsExerciseModalOpen(true)} className="bg-orange-50 text-orange-600 p-2 rounded-xl hover:bg-orange-100 transition"><Plus size={20} /></button>
+              <button onClick={() => setIsExerciseModalOpen(true)} className={`p-2 rounded-xl transition ${theme === 'neon' ? 'bg-neon-pink/20 text-neon-pink hover:bg-neon-pink/40' : 'bg-orange-50 text-orange-600 hover:bg-orange-100'}`}><Plus size={20} /></button>
           </div>
           <div className="flex items-center gap-4 mb-6">
               <div className="relative w-16 h-16 flex-shrink-0">
                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 96 96">
-                    <circle cx="48" cy="48" r="40" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-orange-100" />
-                    <circle cx="48" cy="48" r="40" stroke="currentColor" strokeWidth="8" fill="transparent" strokeDasharray={251.2} strokeDashoffset={251.2 - (251.2 * Math.min(100, (totalCaloriesBurned / burnGoal) * 100) / 100)} className="text-orange-500 transition-all duration-1000 ease-out" strokeLinecap="round" />
+                    <circle cx="48" cy="48" r="40" stroke="currentColor" strokeWidth="8" fill="transparent" className={theme === 'neon' ? 'text-gray-900' : 'text-orange-100'} />
+                    <circle cx="48" cy="48" r="40" stroke="currentColor" strokeWidth="8" fill="transparent" strokeDasharray={251.2} strokeDashoffset={251.2 - (251.2 * Math.min(100, (totalCaloriesBurned / burnGoal) * 100) / 100)} className={`${theme === 'neon' ? 'text-orange-500 shadow-[0_0_10px_orange]' : 'text-orange-500'} transition-all duration-1000 ease-out`} strokeLinecap="round" />
                  </svg>
                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                     <span className="text-xs font-bold text-slate-700">{Math.round(Math.min(100, (totalCaloriesBurned / burnGoal) * 100))}%</span>
+                     <span className={`text-xs font-bold ${t.textMain}`}>{Math.round(Math.min(100, (totalCaloriesBurned / burnGoal) * 100))}%</span>
                  </div>
               </div>
               <div className="flex-1">
                   <div className="flex justify-between items-end mb-1">
                       <div>
-                          <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Calories Burned</p>
-                          <h4 className="text-2xl font-bold text-slate-800 leading-none mt-1">{totalCaloriesBurned} <span className="text-sm font-normal text-slate-400 ml-1">/ {burnGoal} kcal</span></h4>
+                          <p className={`text-xs font-medium uppercase tracking-wider ${t.textSecondary}`}>Calories Burned</p>
+                          <h4 className={`text-2xl font-bold leading-none mt-1 ${t.textMain}`}>{totalCaloriesBurned} <span className={`text-sm font-normal ml-1 ${t.textSecondary}`}>/ {burnGoal} kcal</span></h4>
                       </div>
                   </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2 mt-2">
+                  <div className={`w-full rounded-full h-2 mt-2 ${theme === 'neon' ? 'bg-gray-900' : 'bg-slate-100 dark:bg-slate-700'}`}>
                      <div className="bg-orange-500 h-2 rounded-full transition-all duration-500" style={{ width: `${Math.min(100, (totalCaloriesBurned / burnGoal) * 100)}%` }}></div>
                   </div>
               </div>
@@ -879,28 +1052,28 @@ const App: React.FC = () => {
           {dailyExercises.length > 0 ? (
               <div className="space-y-3">
                   {dailyExercises.map((log) => (
-                      <div key={log.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl group">
+                      <div key={log.id} className={`flex items-center justify-between p-3 rounded-2xl group ${theme === 'neon' ? 'bg-black border border-gray-800' : 'bg-slate-50 dark:bg-slate-900/50'}`}>
                           <div className="flex items-center gap-3">
-                              <div className="bg-white p-2 rounded-xl shadow-sm text-slate-600">{getExerciseIcon(log.activityName)}</div>
+                              <div className={`p-2 rounded-xl shadow-sm ${theme === 'neon' ? 'bg-gray-900 text-gray-300' : 'bg-white text-slate-600'}`}>{getExerciseIcon(log.activityName)}</div>
                               <div>
-                                  <p className="text-sm font-semibold text-slate-700">{log.activityName}</p>
-                                  <p className="text-xs text-slate-400">{log.durationMinutes} mins</p>
+                                  <p className={`text-sm font-semibold ${t.textMain}`}>{log.activityName}</p>
+                                  <p className={`text-xs ${t.textSecondary}`}>{log.durationMinutes} mins</p>
                               </div>
                           </div>
                           <div className="flex items-center gap-3">
                              <span className="text-sm font-bold text-orange-500">-{log.caloriesBurned}</span>
                              <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                                <button onClick={(e) => openEditExercise(log, e)} className="p-1.5 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition"><Edit2 size={14} /></button>
-                                <button onClick={(e) => requestDeleteExercise(log.id, e)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition"><Trash2 size={14} /></button>
+                                <button onClick={(e) => openEditExercise(log, e)} className={`p-1.5 rounded-lg transition ${theme === 'neon' ? 'text-neon-blue hover:bg-neon-blue/20' : 'text-slate-400 hover:text-indigo-500 hover:bg-indigo-50'}`}><Edit2 size={14} /></button>
+                                <button onClick={(e) => requestDeleteExercise(log.id, e)} className={`p-1.5 rounded-lg transition ${theme === 'neon' ? 'text-red-500 hover:bg-red-500/20' : 'text-slate-400 hover:text-red-500 hover:bg-red-50'}`}><Trash2 size={14} /></button>
                              </div>
                           </div>
                       </div>
                   ))}
               </div>
           ) : (
-              <div className="text-center p-4 border-2 border-dashed border-slate-100 rounded-2xl">
-                  <p className="text-sm text-slate-400">No exercise logged today.</p>
-                  <button onClick={() => setIsExerciseModalOpen(true)} className="text-indigo-500 text-sm font-semibold mt-1">Log a workout</button>
+              <div className={`text-center p-4 border-2 border-dashed rounded-2xl ${theme === 'neon' ? 'border-gray-800' : 'border-slate-100 dark:border-slate-700'}`}>
+                  <p className={`text-sm ${t.textMuted}`}>No exercise logged today.</p>
+                  <button onClick={() => setIsExerciseModalOpen(true)} className={`text-sm font-semibold mt-1 ${theme === 'neon' ? 'text-neon-pink' : 'text-indigo-500'}`}>Log a workout</button>
               </div>
           )}
       </div>
@@ -909,56 +1082,56 @@ const App: React.FC = () => {
         <div className="mb-6">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full overflow-hidden border border-slate-200 bg-indigo-50">
+                <div className={`w-8 h-8 rounded-full overflow-hidden border ${theme === 'neon' ? 'border-neon-green bg-black' : 'border-slate-200 bg-indigo-50'}`}>
                     <img src={coachImage} alt={`Coach ${coachName}`} className="w-full h-full object-cover" />
                 </div>
-                <h3 className="text-lg font-semibold text-slate-800">Coach {coachName}'s Insights</h3>
+                <h3 className={`text-lg font-semibold ${t.textMain}`}>Coach {coachName}'s Insights</h3>
             </div>
-            <span className="text-xs font-medium px-2 py-1 bg-slate-100 text-slate-500 rounded-md">
+            <span className={`text-xs font-medium px-2 py-1 rounded-md ${theme === 'neon' ? 'bg-gray-900 text-neon-blue' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'}`}>
                 Goal: {goalType === GoalType.LOSE_WEIGHT ? 'Lose Weight' : goalType === GoalType.GAIN_MUSCLE ? 'Gain Muscle' : 'Maintain'}
             </span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-             <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col">
-                 <div className="flex items-center gap-2 mb-2 text-slate-800 font-semibold">
-                    <div className="p-1.5 bg-indigo-50 rounded-lg">{insights.workout.icon}</div>
+             <div className={`p-4 rounded-2xl flex flex-col ${t.card}`}>
+                 <div className={`flex items-center gap-2 mb-2 font-semibold ${t.textMain}`}>
+                    <div className={`p-1.5 rounded-lg ${t.iconBg}`}>{insights.workout.icon}</div>
                     {insights.workout.title}
                  </div>
-                 <p className="text-sm text-slate-500 leading-relaxed">{insights.workout.desc}</p>
+                 <p className={`text-sm leading-relaxed ${t.textSecondary}`}>{insights.workout.desc}</p>
              </div>
-             <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col">
-                 <div className="flex items-center gap-2 mb-2 text-slate-800 font-semibold">
-                    <div className="p-1.5 bg-blue-50 rounded-lg">{insights.food.icon}</div>
+             <div className={`p-4 rounded-2xl flex flex-col ${t.card}`}>
+                 <div className={`flex items-center gap-2 mb-2 font-semibold ${t.textMain}`}>
+                    <div className={`p-1.5 rounded-lg ${t.iconBg}`}>{insights.food.icon}</div>
                     {insights.food.title}
                  </div>
-                 <p className="text-sm text-slate-500 leading-relaxed">{insights.food.desc}</p>
+                 <p className={`text-sm leading-relaxed ${t.textSecondary}`}>{insights.food.desc}</p>
              </div>
           </div>
         </div>
       )}
 
-      <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100 mb-6">
-          <h3 className="text-lg font-semibold text-slate-700 mb-4">Detailed Nutrition</h3>
+      <div className={`p-5 rounded-3xl mb-6 ${t.card}`}>
+          <h3 className={`text-lg font-semibold mb-4 ${t.textMain}`}>Detailed Nutrition</h3>
           <div className="grid grid-cols-2 gap-x-6 gap-y-4">
              {[
-                { label: 'Sugar', value: dailyTotals.sugar, max: currentGoals.sugar, unit: 'g', color: 'text-pink-600' },
-                { label: 'Sodium', value: dailyTotals.sodium, max: currentGoals.sodium, unit: 'mg', color: 'text-cyan-600' },
-                { label: 'Fiber', value: dailyTotals.fiber, max: currentGoals.fiber, unit: 'g', color: 'text-emerald-600' },
-                { label: 'Cholesterol', value: dailyTotals.cholesterol, max: currentGoals.cholesterol, unit: 'mg', color: 'text-orange-600' },
-                { label: 'Potassium', value: dailyTotals.potassium, max: currentGoals.potassium, unit: 'mg', color: 'text-purple-600' },
+                { label: 'Sugar', value: dailyTotals.sugar, max: currentGoals.sugar, unit: 'g', color: theme === 'neon' ? 'bg-neon-pink' : 'bg-red-500' },
+                { label: 'Sodium', value: dailyTotals.sodium, max: currentGoals.sodium, unit: 'mg', color: theme === 'neon' ? 'bg-neon-blue' : 'bg-cyan-600' },
+                { label: 'Fiber', value: dailyTotals.fiber, max: currentGoals.fiber, unit: 'g', color: theme === 'neon' ? 'bg-neon-green' : 'bg-emerald-600' },
+                { label: 'Cholesterol', value: dailyTotals.cholesterol, max: currentGoals.cholesterol, unit: 'mg', color: theme === 'neon' ? 'bg-orange-500' : 'bg-orange-600' },
+                { label: 'Potassium', value: dailyTotals.potassium, max: currentGoals.potassium, unit: 'mg', color: theme === 'neon' ? 'bg-purple-500' : 'bg-purple-600' },
              ].map((item) => {
                  const pct = Math.round((item.value / item.max) * 100);
                  const isHigh = pct > 100;
                  return (
                     <div key={item.label} className="flex flex-col">
                         <div className="flex justify-between items-baseline mb-1">
-                           <span className="text-slate-500 text-sm">{item.label}</span>
-                           <span className="font-bold text-slate-800">{item.value}{item.unit}</span>
+                           <span className={`text-sm ${t.textSecondary}`}>{item.label}</span>
+                           <span className={`font-bold ${t.textMain}`}>{item.value}{item.unit}</span>
                         </div>
-                        <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                           <div className={`h-full rounded-full ${isHigh ? 'bg-red-500' : 'bg-slate-400'}`} style={{ width: `${Math.min(pct, 100)}%` }}></div>
+                        <div className={`w-full h-1.5 rounded-full overflow-hidden ${theme === 'neon' ? 'bg-gray-900' : 'bg-slate-100 dark:bg-slate-700'}`}>
+                           <div className={`h-full rounded-full ${isHigh ? (theme === 'neon' ? 'bg-red-600 shadow-[0_0_5px_red]' : 'bg-red-500') : item.color} ${theme === 'neon' ? 'shadow-[0_0_5px_currentColor]' : ''}`} style={{ width: `${Math.min(pct, 100)}%` }}></div>
                         </div>
-                        <div className="text-right text-[10px] text-slate-400 mt-0.5">{pct}% DV</div>
+                        <div className={`text-right text-[10px] mt-0.5 ${t.textMuted}`}>{pct}% DV</div>
                     </div>
                  )
              })}
@@ -966,36 +1139,36 @@ const App: React.FC = () => {
       </div>
 
       <div className="mb-6">
-        <h2 className="text-xl font-semibold text-slate-800 mb-4">{isToday ? 'Recent Meals' : 'Meals History'}</h2>
+        <h2 className={`text-xl font-semibold mb-4 ${t.textMain}`}>{isToday ? 'Recent Meals' : 'Meals History'}</h2>
         {dailyLogs.length === 0 ? (
-            <div className="bg-white rounded-3xl p-8 text-center border border-slate-100 shadow-sm">
-                <div className="w-16 h-16 bg-indigo-50 text-indigo-400 rounded-full flex items-center justify-center mx-auto mb-4"><Utensils size={32} /></div>
-                <p className="text-slate-500">No meals tracked for this day.</p>
-                {isToday && <p className="text-slate-400 text-sm mt-1">Tap "Log Meal" to start.</p>}
+            <div className={`rounded-3xl p-8 text-center ${t.card}`}>
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${t.iconBg}`}><Utensils size={32} /></div>
+                <p className={t.textSecondary}>No meals tracked for this day.</p>
+                {isToday && <p className={`text-sm mt-1 ${t.textMuted}`}>Tap "Log Meal" to start.</p>}
             </div>
         ) : (
             <div className="space-y-4">
                 {dailyLogs.map((log) => (
-                    <div key={log.id} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex gap-4 items-center group">
+                    <div key={log.id} className={`p-4 rounded-2xl flex gap-4 items-center group ${t.card}`}>
                         {log.imageUrl ? (
-                           <img src={log.imageUrl} alt={log.foodName} className="w-20 h-20 rounded-xl object-cover flex-shrink-0 bg-slate-100" />
+                           <img src={log.imageUrl} alt={log.foodName} className={`w-20 h-20 rounded-xl object-cover flex-shrink-0 ${theme === 'neon' ? 'bg-gray-900 border border-gray-800' : 'bg-slate-100'}`} />
                         ) : log.foodName.includes('Water') ? (
-                           <div className="w-20 h-20 rounded-xl bg-cyan-50 flex items-center justify-center text-cyan-500 flex-shrink-0"><GlassWater size={32} /></div>
+                           <div className={`w-20 h-20 rounded-xl flex items-center justify-center flex-shrink-0 ${theme === 'neon' ? 'bg-black border border-neon-blue text-neon-blue' : 'bg-cyan-50 text-cyan-500'}`}><GlassWater size={32} /></div>
                         ) : (
-                           <div className="w-20 h-20 rounded-xl bg-indigo-50 flex items-center justify-center text-2xl flex-shrink-0">{QUICK_MEALS.find(m => m.name === log.foodName)?.icon || '🍱'}</div>
+                           <div className={`w-20 h-20 rounded-xl flex items-center justify-center text-2xl flex-shrink-0 ${theme === 'neon' ? 'bg-black border border-gray-700' : 'bg-indigo-50'}`}>{QUICK_MEALS.find(m => m.name === log.foodName)?.icon || '🍱'}</div>
                         )}
                         <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-slate-800 truncate">{log.foodName}</h4>
-                            <p className="text-xs text-slate-500 line-clamp-1">{log.description}</p>
+                            <h4 className={`font-semibold truncate ${t.textMain}`}>{log.foodName}</h4>
+                            <p className={`text-xs line-clamp-1 ${t.textSecondary}`}>{log.description}</p>
                             <div className="flex gap-3 mt-2 text-xs font-medium">
-                                <span className="text-indigo-500">{log.calories} kcal</span>
-                                {log.water > 0 && <span className="text-cyan-500">{log.water} ml</span>}
-                                {!log.foodName.includes('Water') && <span className="text-blue-500">P: {log.protein}g</span>}
+                                <span className={theme === 'neon' ? 'text-neon-pink' : 'text-indigo-500'}>{log.calories} kcal</span>
+                                {log.water > 0 && <span className={theme === 'neon' ? 'text-neon-blue' : 'text-cyan-500'}>{log.water} ml</span>}
+                                {!log.foodName.includes('Water') && <span className={theme === 'neon' ? 'text-neon-green' : 'text-blue-500'}>P: {log.protein}g</span>}
                             </div>
                         </div>
-                        <div className="flex flex-col gap-2 pl-2 border-l border-slate-100 ml-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                            <button onClick={(e) => openEditFood(log, e)} className="p-1.5 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition"><Edit2 size={16} /></button>
-                            <button onClick={(e) => requestDeleteFood(log.id, e)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition"><Trash2 size={16} /></button>
+                        <div className={`flex flex-col gap-2 pl-2 border-l ml-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity ${theme === 'neon' ? 'border-gray-800' : 'border-slate-100'}`}>
+                            <button onClick={(e) => openEditFood(log, e)} className={`p-1.5 rounded-lg transition ${theme === 'neon' ? 'text-neon-blue hover:bg-neon-blue/20' : 'text-slate-400 hover:text-indigo-500 hover:bg-indigo-50'}`}><Edit2 size={16} /></button>
+                            <button onClick={(e) => requestDeleteFood(log.id, e)} className={`p-1.5 rounded-lg transition ${theme === 'neon' ? 'text-red-500 hover:bg-red-500/20' : 'text-slate-400 hover:text-red-500 hover:bg-red-50'}`}><Trash2 size={16} /></button>
                         </div>
                     </div>
                 ))}
@@ -1004,6 +1177,7 @@ const App: React.FC = () => {
       </div>
     </div>
   );
+  };
 
   // View: Analysis Result
   const renderAnalysis = () => {
@@ -1023,57 +1197,57 @@ const App: React.FC = () => {
 
       return (
         <div className="h-full flex flex-col">
-        <div className="relative h-64 bg-slate-900">
+        <div className="relative h-64 bg-black">
             {currentImage && (
                 <img src={currentImage} alt="Captured Food" className="w-full h-full object-cover opacity-80" />
             )}
             <button onClick={() => setView(AppView.DASHBOARD)} className="absolute top-4 left-4 p-2 bg-black/30 backdrop-blur-md rounded-full text-white hover:bg-black/40 transition z-10 pt-safe mt-4"><ChevronLeft size={24} /></button>
             
             {isAnalyzing && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center z-20 bg-black/60 backdrop-blur-md text-white animate-in fade-in duration-300">
-                    <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-indigo-400/30 mb-6 shadow-2xl shadow-indigo-900/50 relative">
-                         <div className="absolute inset-0 bg-indigo-500/20 animate-pulse"></div>
+                <div className="absolute inset-0 flex flex-col items-center justify-center z-20 bg-black/80 backdrop-blur-md text-white animate-in fade-in duration-300">
+                    <div className={`w-24 h-24 rounded-full overflow-hidden border-4 mb-6 relative ${theme === 'neon' ? 'border-neon-green shadow-neon-green' : 'border-indigo-400/30 shadow-indigo-900/50'}`}>
+                         <div className={`absolute inset-0 animate-pulse ${theme === 'neon' ? 'bg-neon-green/20' : 'bg-indigo-500/20'}`}></div>
                          <img src={coachImage} alt={`Coach ${coachName}`} className="w-full h-full object-cover relative z-10" />
                     </div>
-                    <Loader2 size={36} className="animate-spin mb-4 text-indigo-400" />
-                    <p className="font-bold text-xl mb-1 text-center">Analyzing {analysisType === 'drink' ? 'Drink' : 'Food'}...</p>
+                    <Loader2 size={36} className={`animate-spin mb-4 ${theme === 'neon' ? 'text-neon-pink' : 'text-indigo-400'}`} />
+                    <p className={`font-bold text-xl mb-1 text-center ${theme === 'neon' ? 'text-neon-green font-retro' : ''}`}>Analyzing {analysisType === 'drink' ? 'Drink' : 'Food'}...</p>
                     <p className="text-sm text-slate-300 mb-6 text-center">Please wait while Coach {coachName} <br/> calculates the calories.</p>
                 </div>
             )}
         </div>
 
         {!isAnalyzing && adjustedResult && (
-            <div className="flex-1 bg-white -mt-6 rounded-t-3xl p-6 shadow-lg z-10 relative overflow-y-auto animate-in slide-in-from-bottom-10 duration-500">
-                <div className="w-16 h-1.5 bg-slate-200 rounded-full mx-auto mb-6"></div>
+            <div className={`flex-1 -mt-6 rounded-t-3xl p-6 shadow-lg z-10 relative overflow-y-auto animate-in slide-in-from-bottom-10 duration-500 ${theme === 'neon' ? 'bg-black border-t-2 border-neon-pink' : 'bg-white dark:bg-slate-900'}`}>
+                <div className={`w-16 h-1.5 rounded-full mx-auto mb-6 ${theme === 'neon' ? 'bg-gray-800' : 'bg-slate-200 dark:bg-slate-700'}`}></div>
                 
                 <div className="mb-6">
-                    <h2 className="text-2xl font-bold text-slate-900 mb-1">{adjustedResult.foodName}</h2>
-                    <p className="text-slate-500 mb-4">{adjustedResult.description}</p>
+                    <h2 className={`text-2xl font-bold mb-1 ${t.textMain}`}>{adjustedResult.foodName}</h2>
+                    <p className={`mb-4 ${t.textSecondary}`}>{adjustedResult.description}</p>
                     
                     {/* Enhanced Portion Control */}
-                    <div className="bg-slate-50 p-1.5 rounded-2xl border border-slate-200 mb-4 flex">
+                    <div className={`p-1.5 rounded-2xl mb-4 flex ${theme === 'neon' ? 'bg-gray-900 border border-gray-800' : 'bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700'}`}>
                         <button 
                             onClick={() => setInputMode('slider')}
-                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition ${inputMode === 'slider' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition ${inputMode === 'slider' ? (theme === 'neon' ? 'bg-black text-neon-pink border border-neon-pink' : 'bg-white text-indigo-600 shadow-sm dark:bg-slate-700 dark:text-white') : (theme === 'neon' ? 'text-gray-500 hover:text-neon-pink' : 'text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700')}`}
                         >
                             <Scale size={16} />
                             Adjust Scale
                         </button>
                         <button 
                             onClick={() => setInputMode('count')}
-                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition ${inputMode === 'count' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition ${inputMode === 'count' ? (theme === 'neon' ? 'bg-black text-neon-green border border-neon-green' : 'bg-white text-indigo-600 shadow-sm dark:bg-slate-700 dark:text-white') : (theme === 'neon' ? 'text-gray-500 hover:text-neon-green' : 'text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700')}`}
                         >
                             <Hash size={16} />
                             {isDrinkLog ? 'Volume (ml)' : 'Item Count'}
                         </button>
                     </div>
 
-                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                    <div className={`p-4 rounded-2xl ${t.card}`}>
                         {inputMode === 'slider' ? (
                             <>
                                 <div className="flex justify-between items-center mb-2">
-                                    <span className="text-slate-700 font-semibold text-sm">Portion Multiplier</span>
-                                    <span className="text-indigo-600 font-bold bg-indigo-100 px-2 py-1 rounded-lg text-sm">
+                                    <span className={`font-semibold text-sm ${t.textMain}`}>Portion Multiplier</span>
+                                    <span className={`font-bold px-2 py-1 rounded-lg text-sm ${theme === 'neon' ? 'bg-gray-800 text-neon-pink border border-neon-pink' : 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-300'}`}>
                                         {portionSize}x ({Math.round(portionSize * 100)}%)
                                     </span>
                                 </div>
@@ -1082,20 +1256,20 @@ const App: React.FC = () => {
                                     min="0.25" max="2.0" step="0.25" 
                                     value={portionSize}
                                     onChange={(e) => setPortionSize(parseFloat(e.target.value))}
-                                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                                    className={`w-full h-2 rounded-lg appearance-none cursor-pointer ${theme === 'neon' ? 'bg-gray-800 accent-neon-pink' : 'bg-slate-200 accent-indigo-600 dark:bg-slate-700'}`}
                                 />
-                                <div className="flex justify-between text-xs text-slate-400 mt-2">
+                                <div className={`flex justify-between text-xs mt-2 ${t.textMuted}`}>
                                     <span>Small</span><span>Standard</span><span>Double</span>
                                 </div>
                             </>
                         ) : (
                             <>
                                 <div className="flex justify-between items-center mb-4">
-                                    <span className="text-slate-700 font-semibold text-sm">
+                                    <span className={`font-semibold text-sm ${t.textMain}`}>
                                         {isDrinkLog ? 'How many ml?' : `How many ${analysisResult.quantityUnit ? analysisResult.quantityUnit + 's' : 'items'}?`}
                                     </span>
                                     {analysisResult.itemCount && (
-                                        <span className="text-xs text-slate-400 bg-white px-2 py-1 rounded border border-slate-200">
+                                        <span className={`text-xs px-2 py-1 rounded border ${theme === 'neon' ? 'bg-gray-900 border-gray-700 text-neon-green' : 'bg-white border-slate-200 text-slate-400 dark:bg-slate-700 dark:border-slate-600'}`}>
                                             Detected: {analysisResult.itemCount}
                                         </span>
                                     )}
@@ -1103,19 +1277,28 @@ const App: React.FC = () => {
                                 <div className="flex items-center justify-between gap-4">
                                     <button 
                                         onClick={() => setCountValue(Math.max(1, countValue - (isDrinkLog ? 50 : 1)))}
-                                        className="w-12 h-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-100 hover:text-indigo-600 transition"
+                                        className={`w-12 h-12 rounded-xl border flex items-center justify-center transition ${theme === 'neon' ? 'bg-black border-gray-700 text-neon-blue hover:border-neon-blue' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-indigo-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300'}`}
                                     >
                                         <Minus size={20} />
                                     </button>
                                     <div className="flex-1 text-center">
-                                        <span className="text-3xl font-bold text-slate-800">{countValue}</span>
-                                        <span className="block text-xs text-slate-400 font-medium uppercase mt-1">
+                                        <input 
+                                            type="number" 
+                                            value={countValue}
+                                            onChange={(e) => {
+                                                const val = parseInt(e.target.value);
+                                                setCountValue(isNaN(val) ? 0 : val);
+                                            }}
+                                            onClick={(e) => (e.target as HTMLInputElement).select()}
+                                            className={`w-full text-3xl font-bold text-center bg-transparent border-b border-transparent transition-colors p-0 focus:outline-none ${theme === 'neon' ? 'text-neon-pink hover:border-neon-pink focus:border-neon-pink' : 'text-slate-800 hover:border-slate-200 focus:border-indigo-500 dark:text-white'}`}
+                                        />
+                                        <span className={`block text-xs font-medium uppercase mt-1 ${t.textMuted}`}>
                                             {isDrinkLog ? 'ml' : (analysisResult.quantityUnit || 'Items')}
                                         </span>
                                     </div>
                                     <button 
                                         onClick={() => setCountValue(countValue + (isDrinkLog ? 50 : 1))}
-                                        className="w-12 h-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-100 hover:text-indigo-600 transition"
+                                        className={`w-12 h-12 rounded-xl border flex items-center justify-center transition ${theme === 'neon' ? 'bg-black border-gray-700 text-neon-blue hover:border-neon-blue' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-indigo-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300'}`}
                                     >
                                         <Plus size={20} />
                                     </button>
@@ -1126,66 +1309,66 @@ const App: React.FC = () => {
                 </div>
 
                 {isDrinkLog && adjustedResult.sugar > 25 && (
-                     <div className="mb-6 bg-pink-50 border border-pink-200 p-4 rounded-2xl flex gap-3">
-                        <AlertTriangle className="text-pink-500 shrink-0" size={24} />
+                     <div className={`mb-6 p-4 rounded-2xl flex gap-3 ${theme === 'neon' ? 'bg-black border border-red-500 shadow-[0_0_5px_red]' : 'bg-pink-50 border border-pink-200 dark:bg-pink-900/20 dark:border-pink-800'}`}>
+                        <AlertTriangle className={theme === 'neon' ? 'text-red-500' : 'text-pink-500 shrink-0'} size={24} />
                         <div>
-                            <h4 className="font-bold text-pink-800 text-sm">High Sugar Warning</h4>
-                            <p className="text-pink-700 text-xs mt-1">This drink contains {adjustedResult.sugar}g of sugar. That's high! Consider water instead.</p>
+                            <h4 className={`font-bold text-sm ${theme === 'neon' ? 'text-red-500' : 'text-pink-800 dark:text-pink-300'}`}>High Sugar Warning</h4>
+                            <p className={`text-xs mt-1 ${theme === 'neon' ? 'text-red-400' : 'text-pink-700 dark:text-pink-400'}`}>This drink contains {adjustedResult.sugar}g of sugar. That's high! Consider water instead.</p>
                         </div>
                     </div>
                 )}
 
                 {highNutrients.length > 0 && (
-                    <div className="mb-6 bg-amber-50 border border-amber-200 p-4 rounded-2xl flex gap-3">
-                        <AlertTriangle className="text-amber-500 shrink-0" size={24} />
+                    <div className={`mb-6 p-4 rounded-2xl flex gap-3 ${theme === 'neon' ? 'bg-black border border-yellow-500 shadow-[0_0_5px_yellow]' : 'bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-800'}`}>
+                        <AlertTriangle className={theme === 'neon' ? 'text-yellow-500' : 'text-amber-500 shrink-0'} size={24} />
                         <div>
-                            <h4 className="font-bold text-amber-800 text-sm">High Content Warning</h4>
-                            <p className="text-amber-700 text-xs mt-1">This portion contains >50% daily value for: {highNutrients.join(", ")}.</p>
+                            <h4 className={`font-bold text-sm ${theme === 'neon' ? 'text-yellow-500' : 'text-amber-800 dark:text-amber-300'}`}>High Content Warning</h4>
+                            <p className={`text-xs mt-1 ${theme === 'neon' ? 'text-yellow-400' : 'text-amber-700 dark:text-amber-400'}`}>This portion contains >50% daily value for: {highNutrients.join(", ")}.</p>
                         </div>
                     </div>
                 )}
 
                 <div className="grid grid-cols-2 gap-4 mb-6">
-                    <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100">
-                        <p className="text-indigo-600 text-sm font-medium mb-1">Calories</p>
-                        <p className="text-3xl font-bold text-indigo-900">{adjustedResult.calories}</p>
+                    <div className={`p-4 rounded-2xl border ${theme === 'neon' ? 'bg-gray-900 border-neon-pink' : 'bg-indigo-50 border-indigo-100 dark:bg-indigo-900/30 dark:border-indigo-800'}`}>
+                        <p className={`text-sm font-medium mb-1 ${theme === 'neon' ? 'text-neon-pink' : 'text-indigo-600 dark:text-indigo-300'}`}>Calories</p>
+                        <p className={`text-3xl font-bold ${theme === 'neon' ? 'text-white' : 'text-indigo-900 dark:text-indigo-100'}`}>{adjustedResult.calories}</p>
                     </div>
                     <div className="space-y-2">
                          {isDrinkLog ? (
                              <>
-                                <div className="flex justify-between items-center bg-cyan-50 px-3 py-2 rounded-xl border border-cyan-100">
-                                    <span className="text-cyan-700 text-sm font-medium">Volume</span>
-                                    <span className="text-cyan-900 font-bold">{countValue}ml</span>
+                                <div className={`flex justify-between items-center px-3 py-2 rounded-xl border ${theme === 'neon' ? 'bg-gray-900 border-neon-blue text-neon-blue' : 'bg-cyan-50 border-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:border-cyan-800 dark:text-cyan-300'}`}>
+                                    <span className="text-sm font-medium">Volume</span>
+                                    <span className="font-bold">{countValue}ml</span>
                                 </div>
-                                <div className="flex justify-between items-center bg-pink-50 px-3 py-2 rounded-xl border border-pink-100">
-                                    <span className="text-pink-700 text-sm font-medium">Sugar</span>
-                                    <span className="text-pink-900 font-bold">{adjustedResult.sugar}g</span>
+                                <div className={`flex justify-between items-center px-3 py-2 rounded-xl border ${theme === 'neon' ? 'bg-gray-900 border-neon-pink text-neon-pink' : 'bg-pink-50 border-pink-100 text-pink-700 dark:bg-pink-900/30 dark:border-pink-800 dark:text-pink-300'}`}>
+                                    <span className="text-sm font-medium">Sugar</span>
+                                    <span className="font-bold">{adjustedResult.sugar}g</span>
                                 </div>
-                                <div className="flex justify-between items-center bg-blue-50 px-3 py-2 rounded-xl border border-blue-100">
-                                    <span className="text-blue-700 text-sm font-medium">Protein</span>
-                                    <span className="text-blue-900 font-bold">{adjustedResult.protein}g</span>
+                                <div className={`flex justify-between items-center px-3 py-2 rounded-xl border ${theme === 'neon' ? 'bg-gray-900 border-neon-green text-neon-green' : 'bg-blue-50 border-blue-100 text-blue-700 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-300'}`}>
+                                    <span className="text-sm font-medium">Protein</span>
+                                    <span className="font-bold">{adjustedResult.protein}g</span>
                                 </div>
                              </>
                          ) : (
                              <>
-                                <div className="flex justify-between items-center bg-blue-50 px-3 py-2 rounded-xl border border-blue-100">
-                                    <span className="text-blue-700 text-sm font-medium">Protein</span>
-                                    <span className="text-blue-900 font-bold">{adjustedResult.protein}g</span>
+                                <div className={`flex justify-between items-center px-3 py-2 rounded-xl border ${theme === 'neon' ? 'bg-gray-900 border-neon-blue text-neon-blue' : 'bg-blue-50 border-blue-100 text-blue-700 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-300'}`}>
+                                    <span className="text-sm font-medium">Protein</span>
+                                    <span className="font-bold">{adjustedResult.protein}g</span>
                                 </div>
-                                <div className="flex justify-between items-center bg-green-50 px-3 py-2 rounded-xl border border-green-100">
-                                    <span className="text-green-700 text-sm font-medium">Carbs</span>
-                                    <span className="text-green-900 font-bold">{adjustedResult.carbs}g</span>
+                                <div className={`flex justify-between items-center px-3 py-2 rounded-xl border ${theme === 'neon' ? 'bg-gray-900 border-neon-green text-neon-green' : 'bg-green-50 border-green-100 text-green-700 dark:bg-green-900/30 dark:border-green-800 dark:text-green-300'}`}>
+                                    <span className="text-sm font-medium">Carbs</span>
+                                    <span className="font-bold">{adjustedResult.carbs}g</span>
                                 </div>
-                                <div className="flex justify-between items-center bg-cyan-50 px-3 py-2 rounded-xl border border-cyan-100">
-                                    <span className="text-cyan-700 text-sm font-medium">Water</span>
-                                    <span className="text-cyan-900 font-bold">{adjustedResult.water}ml</span>
+                                <div className={`flex justify-between items-center px-3 py-2 rounded-xl border ${theme === 'neon' ? 'bg-gray-900 border-neon-purple text-neon-purple' : 'bg-cyan-50 border-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:border-cyan-800 dark:text-cyan-300'}`}>
+                                    <span className="text-sm font-medium">Water</span>
+                                    <span className="font-bold">{adjustedResult.water}ml</span>
                                 </div>
                              </>
                          )}
                     </div>
                 </div>
 
-                <h3 className="font-semibold text-slate-700 mb-3">Nutritional Details</h3>
+                <h3 className={`font-semibold mb-3 ${t.textMain}`}>Nutritional Details</h3>
                 <div className="space-y-3 mb-8">
                     {[
                         { label: 'Sugar', value: adjustedResult.sugar, unit: 'g', max: currentGoals.sugar },
@@ -1194,13 +1377,13 @@ const App: React.FC = () => {
                     ].map((item) => {
                         const pct = Math.round((item.value / item.max) * 100);
                         return (
-                            <div key={item.label} className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
-                                <span className="text-slate-500 text-sm">{item.label}</span>
+                            <div key={item.label} className={`flex items-center justify-between py-2 border-b last:border-0 ${theme === 'neon' ? 'border-gray-800' : 'border-slate-100 dark:border-slate-800'}`}>
+                                <span className={`text-sm ${t.textSecondary}`}>{item.label}</span>
                                 <div className="flex items-center gap-3">
-                                    <div className="w-24 bg-slate-100 h-1.5 rounded-full">
-                                        <div className={`h-1.5 rounded-full ${pct > 50 ? 'bg-amber-500' : 'bg-slate-400'}`} style={{ width: `${Math.min(pct, 100)}%` }}></div>
+                                    <div className={`w-24 h-1.5 rounded-full ${theme === 'neon' ? 'bg-gray-800' : 'bg-slate-100 dark:bg-slate-700'}`}>
+                                        <div className={`h-1.5 rounded-full ${pct > 50 ? (theme === 'neon' ? 'bg-yellow-500 shadow-[0_0_5px_yellow]' : 'bg-amber-500') : (theme === 'neon' ? 'bg-neon-blue shadow-[0_0_5px_cyan]' : 'bg-slate-400')}`} style={{ width: `${Math.min(pct, 100)}%` }}></div>
                                     </div>
-                                    <span className="text-slate-800 font-medium w-16 text-right text-sm">{item.value}{item.unit}</span>
+                                    <span className={`font-medium w-16 text-right text-sm ${t.textMain}`}>{item.value}{item.unit}</span>
                                 </div>
                             </div>
                         )
@@ -1211,13 +1394,13 @@ const App: React.FC = () => {
                     <div className="mb-8">
                         <div className="flex items-center gap-2 mb-4">
                             <Flame className="text-orange-500" size={20} />
-                            <h3 className="font-semibold text-slate-700">Burn It Off</h3>
+                            <h3 className={`font-semibold ${t.textMain}`}>Burn It Off</h3>
                         </div>
                         <div className="grid grid-cols-3 gap-3">
                             {adjustedResult.exerciseSuggestions.map((ex, idx) => (
-                                <div key={idx} className="bg-orange-50 border border-orange-100 p-3 rounded-2xl flex flex-col items-center text-center">
-                                    <div className="p-2 bg-white rounded-full mb-2 shadow-sm">{getExerciseIcon(ex.activity)}</div>
-                                    <p className="text-xs font-medium text-slate-800 line-clamp-1">{ex.activity}</p>
+                                <div key={idx} className={`p-3 rounded-2xl flex flex-col items-center text-center ${theme === 'neon' ? 'bg-gray-900 border border-gray-800' : 'bg-orange-50 border border-orange-100 dark:bg-orange-900/20 dark:border-orange-800'}`}>
+                                    <div className={`p-2 rounded-full mb-2 shadow-sm ${theme === 'neon' ? 'bg-black text-neon-pink' : 'bg-white'}`}>{getExerciseIcon(ex.activity)}</div>
+                                    <p className={`text-xs font-medium line-clamp-1 ${t.textMain}`}>{ex.activity}</p>
                                     <div className="flex items-center gap-1 mt-1 text-orange-600">
                                         <Timer size={10} />
                                         <span className="text-xs font-bold">{Math.round(ex.durationMinutes * effectiveMultiplier)}m</span>
@@ -1228,11 +1411,11 @@ const App: React.FC = () => {
                     </div>
                 )}
 
-                <button onClick={confirmEntry} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] transition text-white font-bold text-lg rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-indigo-200">
+                <button onClick={confirmEntry} className={`w-full py-4 font-bold text-lg rounded-2xl flex items-center justify-center gap-2 transition active:scale-[0.98] ${t.buttonPrimary}`}>
                     <Check size={20} />
                     Add to Log
                 </button>
-                <button onClick={() => setView(AppView.CAMERA)} className="w-full mt-3 py-4 bg-white text-slate-500 font-medium rounded-2xl flex items-center justify-center gap-2 hover:bg-slate-50 transition">
+                <button onClick={() => setView(AppView.CAMERA)} className={`w-full mt-3 py-4 font-medium rounded-2xl flex items-center justify-center gap-2 transition ${t.buttonSecondary}`}>
                     Retake Photo
                 </button>
             </div>
@@ -1244,48 +1427,48 @@ const App: React.FC = () => {
   if (view === AppView.LAUNCH) return renderLaunchScreen();
 
   return (
-    <div className="max-w-md mx-auto h-[100dvh] bg-slate-50 relative shadow-2xl overflow-hidden flex flex-col pb-safe">
+    <div className={`max-w-md mx-auto h-[100dvh] relative shadow-2xl overflow-hidden flex flex-col pb-safe ${t.bgMain} ${t.font} ${theme === 'dark' || theme === 'neon' ? 'dark' : ''} ${theme === 'neon' ? 'neon' : ''}`}>
       
       {/* Install App Instructions Modal */}
       {showInstallHelp && (
          <div className="absolute inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 animate-in fade-in duration-200">
-            <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-sm p-8 shadow-2xl animate-in slide-in-from-bottom duration-300">
+            <div className={`rounded-t-3xl sm:rounded-3xl w-full max-w-sm p-8 shadow-2xl animate-in slide-in-from-bottom duration-300 ${t.modalBg}`}>
                 <div className="flex justify-between items-center mb-6">
-                   <h3 className="text-2xl font-bold text-slate-800">Install App</h3>
-                   <button onClick={() => setShowInstallHelp(false)} className="p-2 bg-slate-100 hover:bg-slate-200 rounded-full text-slate-500 transition"><X size={20} /></button>
+                   <h3 className={`text-2xl font-bold ${t.textMain}`}>Install App</h3>
+                   <button onClick={() => setShowInstallHelp(false)} className={`p-2 rounded-full transition ${theme === 'neon' ? 'bg-gray-800 text-neon-pink' : 'bg-slate-100 hover:bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-300'}`}><X size={20} /></button>
                 </div>
                 
                 <div className="space-y-6">
                     <div className="flex gap-4 items-start">
-                        <div className="bg-indigo-50 p-3 rounded-2xl text-indigo-600">
+                        <div className={`p-3 rounded-2xl ${t.iconBg}`}>
                             <Share size={24} />
                         </div>
                         <div>
-                            <h4 className="font-bold text-slate-800">1. Tap Share</h4>
-                            <p className="text-sm text-slate-500">Tap the Share icon at the bottom of your Safari browser.</p>
+                            <h4 className={`font-bold ${t.textMain}`}>1. Tap Share</h4>
+                            <p className={`text-sm ${t.textSecondary}`}>Tap the Share icon at the bottom of your Safari browser.</p>
                         </div>
                     </div>
                     
-                    <div className="w-full h-px bg-slate-100"></div>
+                    <div className={`w-full h-px ${theme === 'neon' ? 'bg-gray-800' : 'bg-slate-100 dark:bg-slate-700'}`}></div>
 
                     <div className="flex gap-4 items-start">
-                        <div className="bg-indigo-50 p-3 rounded-2xl text-indigo-600">
+                        <div className={`p-3 rounded-2xl ${t.iconBg}`}>
                             <PlusSquare size={24} />
                         </div>
                         <div>
-                            <h4 className="font-bold text-slate-800">2. Add to Home Screen</h4>
-                            <p className="text-sm text-slate-500">Scroll down and tap "Add to Home Screen".</p>
+                            <h4 className={`font-bold ${t.textMain}`}>2. Add to Home Screen</h4>
+                            <p className={`text-sm ${t.textSecondary}`}>Scroll down and tap "Add to Home Screen".</p>
                         </div>
                     </div>
 
-                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 mt-4">
-                        <p className="text-xs text-slate-500 flex items-center gap-2">
-                           <span className="font-bold text-indigo-600">Note for Android:</span> Tap the <MoreVertical size={12} className="inline" /> menu and select "Install App".
+                    <div className={`p-4 rounded-xl border mt-4 ${t.card}`}>
+                        <p className={`text-xs flex items-center gap-2 ${t.textSecondary}`}>
+                           <span className={`font-bold ${theme === 'neon' ? 'text-neon-pink' : 'text-indigo-600'}`}>Note for Android:</span> Tap the <MoreVertical size={12} className="inline" /> menu and select "Install App".
                         </p>
                     </div>
                 </div>
 
-                <button onClick={() => setShowInstallHelp(false)} className="w-full mt-8 py-4 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 transition">Got it!</button>
+                <button onClick={() => setShowInstallHelp(false)} className={`w-full mt-8 py-4 font-bold rounded-2xl transition ${t.buttonPrimary}`}>Got it!</button>
             </div>
          </div>
       )}
@@ -1293,14 +1476,14 @@ const App: React.FC = () => {
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
         <div className="absolute inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-           <div className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl animate-in fade-in zoom-in duration-200 text-center">
-              <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+           <div className={`rounded-3xl w-full max-w-sm p-6 shadow-2xl animate-in fade-in zoom-in duration-200 text-center ${t.modalBg}`}>
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${theme === 'neon' ? 'bg-gray-900 text-red-500' : 'bg-red-50 text-red-500 dark:bg-red-900/20'}`}>
                   <Trash2 size={32} />
               </div>
-              <h3 className="text-xl font-bold text-slate-800 mb-2">Delete this item?</h3>
-              <p className="text-slate-500 mb-6">This action cannot be undone.</p>
+              <h3 className={`text-xl font-bold mb-2 ${t.textMain}`}>Delete this item?</h3>
+              <p className={`mb-6 ${t.textSecondary}`}>This action cannot be undone.</p>
               <div className="flex gap-3">
-                  <button onClick={() => setDeleteConfirm(null)} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl transition">Cancel</button>
+                  <button onClick={() => setDeleteConfirm(null)} className={`flex-1 py-3 font-bold rounded-xl transition ${t.buttonSecondary}`}>Cancel</button>
                   <button onClick={proceedWithDelete} className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl shadow-lg shadow-red-200 transition">Delete</button>
               </div>
            </div>
@@ -1310,46 +1493,46 @@ const App: React.FC = () => {
       {/* Quick Add Modal */}
       {quickAddModal.isOpen && quickAddModal.meal && (
           <div className="absolute inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-              <div className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl animate-in fade-in zoom-in duration-200">
+              <div className={`rounded-3xl w-full max-w-sm p-6 shadow-2xl animate-in fade-in zoom-in duration-200 ${t.modalBg}`}>
                   <div className="flex justify-between items-center mb-6">
-                      <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                          <Zap className="text-amber-500" size={24} />
+                      <h3 className={`text-xl font-bold flex items-center gap-2 ${t.textMain}`}>
+                          <Zap className={theme === 'neon' ? 'text-neon-yellow' : 'text-amber-500'} size={24} />
                           Quick Add
                       </h3>
-                      <button onClick={() => setQuickAddModal({ isOpen: false, meal: null })} className="p-2 hover:bg-slate-100 rounded-full text-slate-500"><X size={20} /></button>
+                      <button onClick={() => setQuickAddModal({ isOpen: false, meal: null })} className={`p-2 rounded-full ${t.textSecondary} hover:bg-gray-100 dark:hover:bg-slate-700`}><X size={20} /></button>
                   </div>
                   
                   <div className="flex flex-col items-center mb-6">
                       <div className="text-6xl mb-4">{quickAddModal.meal.icon}</div>
-                      <h4 className="text-2xl font-bold text-slate-800">{quickAddModal.meal.name}</h4>
-                      <p className="text-slate-500">{quickAddModal.meal.calories} kcal / serving</p>
+                      <h4 className={`text-2xl font-bold ${t.textMain}`}>{quickAddModal.meal.name}</h4>
+                      <p className={t.textSecondary}>{quickAddModal.meal.calories} kcal / serving</p>
                   </div>
 
                   <div className="mb-6">
-                      <label className="block text-sm font-medium text-slate-600 mb-2 text-center">How many servings?</label>
+                      <label className={`block text-sm font-medium mb-2 text-center ${t.textSecondary}`}>How many servings?</label>
                       <div className="flex items-center justify-center gap-4">
                           <button 
                               onClick={() => setQuickAddQuantity(Math.max(1, quickAddQuantity - 1))}
-                              className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition"
+                              className={`w-12 h-12 rounded-xl flex items-center justify-center transition ${theme === 'neon' ? 'bg-gray-800 text-neon-green hover:bg-gray-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300'}`}
                           >
                               <Minus size={20} />
                           </button>
-                          <span className="text-3xl font-bold text-slate-800 w-12 text-center">{quickAddQuantity}</span>
+                          <span className={`text-3xl font-bold w-12 text-center ${t.textMain}`}>{quickAddQuantity}</span>
                           <button 
                               onClick={() => setQuickAddQuantity(quickAddQuantity + 1)}
-                              className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition"
+                              className={`w-12 h-12 rounded-xl flex items-center justify-center transition ${theme === 'neon' ? 'bg-gray-800 text-neon-green hover:bg-gray-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300'}`}
                           >
                               <Plus size={20} />
                           </button>
                       </div>
                   </div>
 
-                  <div className="bg-slate-50 rounded-2xl p-4 mb-6 border border-slate-100">
+                  <div className={`rounded-2xl p-4 mb-6 border ${t.card}`}>
                       <div className="flex justify-between items-center mb-2">
-                          <span className="text-slate-600 font-medium">Total Calories</span>
-                          <span className="text-indigo-600 font-bold text-lg">{Math.round(quickAddModal.meal.calories * quickAddQuantity)} kcal</span>
+                          <span className={`font-medium ${t.textSecondary}`}>Total Calories</span>
+                          <span className={`font-bold text-lg ${theme === 'neon' ? 'text-neon-pink' : 'text-indigo-600'}`}>{Math.round(quickAddModal.meal.calories * quickAddQuantity)} kcal</span>
                       </div>
-                      <div className="flex gap-2 text-xs text-slate-400 justify-end">
+                      <div className={`flex gap-2 text-xs justify-end ${t.textMuted}`}>
                           <span>P: {Math.round(quickAddModal.meal.protein * quickAddQuantity)}g</span>
                           <span>•</span>
                           <span>C: {Math.round(quickAddModal.meal.carbs * quickAddQuantity)}g</span>
@@ -1358,7 +1541,7 @@ const App: React.FC = () => {
                       </div>
                   </div>
 
-                  <button onClick={confirmQuickMeal} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition active:scale-95">Add to Log</button>
+                  <button onClick={confirmQuickMeal} className={`w-full py-3 font-bold rounded-xl transition active:scale-95 ${t.buttonPrimary}`}>Add to Log</button>
               </div>
           </div>
       )}
@@ -1366,36 +1549,36 @@ const App: React.FC = () => {
       {/* Custom Water Modal */}
       {isWaterModalOpen && (
           <div className="absolute inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-              <div className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl animate-in fade-in zoom-in duration-200">
+              <div className={`rounded-3xl w-full max-w-sm p-6 shadow-2xl animate-in fade-in zoom-in duration-200 ${t.modalBg}`}>
                   <div className="flex justify-between items-center mb-6">
-                      <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                          <GlassWater className="text-cyan-500" size={24} />
+                      <h3 className={`text-xl font-bold flex items-center gap-2 ${t.textMain}`}>
+                          <GlassWater className={theme === 'neon' ? 'text-neon-blue' : 'text-cyan-500'} size={24} />
                           Add Water
                       </h3>
-                      <button onClick={() => setIsWaterModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-500"><X size={20} /></button>
+                      <button onClick={() => setIsWaterModalOpen(false)} className={`p-2 rounded-full ${t.textSecondary} hover:bg-gray-100 dark:hover:bg-slate-700`}><X size={20} /></button>
                   </div>
                   
                   <div className="mb-6">
-                      <label className="block text-sm font-medium text-slate-600 mb-2">Amount in ml</label>
+                      <label className={`block text-sm font-medium mb-2 ${t.textSecondary}`}>Amount in ml</label>
                       <div className="relative">
                           <input 
                             type="number" 
                             value={customWaterAmount} 
                             onChange={(e) => setCustomWaterAmount(e.target.value)} 
-                            className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 text-lg font-bold text-slate-800" 
+                            className={`w-full p-4 rounded-2xl focus:outline-none focus:ring-2 text-lg font-bold ${t.inputBg}`} 
                             placeholder="e.g. 300"
                             autoFocus
                           />
-                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium">ml</span>
+                          <span className={`absolute right-4 top-1/2 -translate-y-1/2 font-medium ${t.textMuted}`}>ml</span>
                       </div>
                       <div className="flex gap-2 mt-3">
-                         <button onClick={() => setCustomWaterAmount('250')} className="flex-1 py-2 bg-slate-50 hover:bg-cyan-50 text-cyan-700 text-xs font-bold rounded-xl border border-slate-100 transition">250ml</button>
-                         <button onClick={() => setCustomWaterAmount('500')} className="flex-1 py-2 bg-slate-50 hover:bg-cyan-50 text-cyan-700 text-xs font-bold rounded-xl border border-slate-100 transition">500ml</button>
-                         <button onClick={() => setCustomWaterAmount('750')} className="flex-1 py-2 bg-slate-50 hover:bg-cyan-50 text-cyan-700 text-xs font-bold rounded-xl border border-slate-100 transition">750ml</button>
+                         <button onClick={() => setCustomWaterAmount('250')} className={`flex-1 py-2 text-xs font-bold rounded-xl border transition ${theme === 'neon' ? 'bg-black border-neon-blue text-neon-blue' : 'bg-slate-50 hover:bg-cyan-50 text-cyan-700 border-slate-100 dark:bg-slate-700 dark:border-slate-600 dark:text-cyan-300'}`}>250ml</button>
+                         <button onClick={() => setCustomWaterAmount('500')} className={`flex-1 py-2 text-xs font-bold rounded-xl border transition ${theme === 'neon' ? 'bg-black border-neon-blue text-neon-blue' : 'bg-slate-50 hover:bg-cyan-50 text-cyan-700 border-slate-100 dark:bg-slate-700 dark:border-slate-600 dark:text-cyan-300'}`}>500ml</button>
+                         <button onClick={() => setCustomWaterAmount('750')} className={`flex-1 py-2 text-xs font-bold rounded-xl border transition ${theme === 'neon' ? 'bg-black border-neon-blue text-neon-blue' : 'bg-slate-50 hover:bg-cyan-50 text-cyan-700 border-slate-100 dark:bg-slate-700 dark:border-slate-600 dark:text-cyan-300'}`}>750ml</button>
                       </div>
                   </div>
 
-                  <button onClick={addCustomWaterLog} className="w-full py-3 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-xl shadow-lg shadow-cyan-200 transition active:scale-95">Add Water</button>
+                  <button onClick={addCustomWaterLog} className={`w-full py-3 font-bold rounded-xl transition active:scale-95 ${theme === 'neon' ? 'bg-neon-blue text-black hover:bg-white' : 'bg-cyan-600 hover:bg-cyan-700 text-white shadow-lg shadow-cyan-200'}`}>Add Water</button>
               </div>
           </div>
       )}
@@ -1403,20 +1586,20 @@ const App: React.FC = () => {
       {/* Exercise Add Modal */}
       {isExerciseModalOpen && (
           <div className="absolute inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-              <div className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl animate-in fade-in zoom-in duration-200">
+              <div className={`rounded-3xl w-full max-w-sm p-6 shadow-2xl animate-in fade-in zoom-in duration-200 ${t.modalBg}`}>
                   <div className="flex justify-between items-center mb-6">
-                      <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                      <h3 className={`text-xl font-bold flex items-center gap-2 ${t.textMain}`}>
                           <Activity className="text-orange-500" size={24} />
                           Log Activity
                       </h3>
-                      <button onClick={() => setIsExerciseModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-500"><X size={20} /></button>
+                      <button onClick={() => setIsExerciseModalOpen(false)} className={`p-2 rounded-full ${t.textSecondary} hover:bg-gray-100 dark:hover:bg-slate-700`}><X size={20} /></button>
                   </div>
                   <div className="mb-6">
-                      <label className="block text-sm font-medium text-slate-600 mb-2">Activity Type</label>
+                      <label className={`block text-sm font-medium mb-2 ${t.textSecondary}`}>Activity Type</label>
                       <div className="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
                           {AVAILABLE_SPORTS.map(sport => (
-                              <button key={sport.id} onClick={() => setSelectedExerciseId(sport.id)} className={`flex flex-col items-center justify-center p-2 rounded-xl border transition ${selectedExerciseId === sport.id ? 'bg-orange-50 border-orange-500 text-orange-700' : 'bg-white border-slate-100 text-slate-500'}`}>
-                                  <div className={selectedExerciseId === sport.id ? 'text-orange-500' : 'text-slate-400'}>{sport.icon}</div>
+                              <button key={sport.id} onClick={() => setSelectedExerciseId(sport.id)} className={`flex flex-col items-center justify-center p-2 rounded-xl border transition ${selectedExerciseId === sport.id ? (theme === 'neon' ? 'bg-gray-800 border-neon-pink text-neon-pink' : 'bg-orange-50 border-orange-500 text-orange-700') : (theme === 'neon' ? 'bg-black border-gray-700 text-gray-400' : 'bg-white border-slate-100 text-slate-500 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-400')}`}>
+                                  <div className={selectedExerciseId === sport.id ? (theme === 'neon' ? 'text-neon-pink' : 'text-orange-500') : (theme === 'neon' ? 'text-gray-500' : 'text-slate-400')}>{sport.icon}</div>
                                   <span className="text-[10px] font-bold mt-1 text-center leading-tight">{sport.id}</span>
                               </button>
                           ))}
@@ -1424,20 +1607,20 @@ const App: React.FC = () => {
                   </div>
                   <div className="mb-6">
                       <div className="flex justify-between items-center mb-2">
-                          <label className="text-sm font-medium text-slate-600">Duration</label>
-                          <span className="text-orange-600 font-bold bg-orange-100 px-2 py-1 rounded-lg text-sm">{exerciseDuration} min</span>
+                          <label className={`text-sm font-medium ${t.textSecondary}`}>Duration</label>
+                          <span className={`font-bold px-2 py-1 rounded-lg text-sm ${theme === 'neon' ? 'bg-gray-800 text-neon-pink' : 'text-orange-600 bg-orange-100'}`}>{exerciseDuration} min</span>
                       </div>
-                      <input type="range" min="5" max="180" step="5" value={exerciseDuration} onChange={(e) => setExerciseDuration(parseInt(e.target.value))} className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-orange-500" />
+                      <input type="range" min="5" max="180" step="5" value={exerciseDuration} onChange={(e) => setExerciseDuration(parseInt(e.target.value))} className={`w-full h-2 rounded-lg appearance-none cursor-pointer ${theme === 'neon' ? 'bg-gray-800 accent-neon-pink' : 'bg-slate-200 accent-orange-500'}`} />
                   </div>
                   <div className="mb-6">
-                      <label className="block text-sm font-medium text-slate-600 mb-2">Calories Burned (Est.)</label>
+                      <label className={`block text-sm font-medium mb-2 ${t.textSecondary}`}>Calories Burned (Est.)</label>
                       <div className="relative">
-                          <input type="number" value={exerciseCalories} onChange={(e) => setExerciseCalories(e.target.value)} className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-orange-500 text-lg font-bold text-slate-800" />
-                          <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 text-slate-400"><Flame size={16} /> kcal</div>
+                          <input type="number" value={exerciseCalories} onChange={(e) => setExerciseCalories(e.target.value)} className={`w-full p-4 rounded-2xl focus:outline-none focus:ring-2 text-lg font-bold ${t.inputBg}`} />
+                          <div className={`absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 ${t.textMuted}`}><Flame size={16} /> kcal</div>
                       </div>
                       {!weight && <p className="text-[10px] text-orange-400 mt-1">Add weight in settings for better accuracy.</p>}
                   </div>
-                  <button onClick={addExerciseLog} className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl shadow-lg shadow-orange-200 transition active:scale-95">Log Workout</button>
+                  <button onClick={addExerciseLog} className={`w-full py-3 font-bold rounded-xl transition active:scale-95 ${theme === 'neon' ? 'bg-neon-pink text-black hover:bg-neon-purple' : 'bg-orange-500 hover:bg-orange-600 text-white shadow-lg shadow-orange-200'}`}>Log Workout</button>
               </div>
           </div>
       )}
@@ -1445,40 +1628,40 @@ const App: React.FC = () => {
       {/* Edit Food Log Modal */}
       {editingFoodLog && (
         <div className="absolute inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-           <div className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl animate-in fade-in zoom-in duration-200">
+           <div className={`rounded-3xl w-full max-w-sm p-6 shadow-2xl animate-in fade-in zoom-in duration-200 ${t.modalBg}`}>
               <div className="flex justify-between items-center mb-6">
-                 <h3 className="text-xl font-bold text-slate-800">Edit Meal</h3>
-                 <button onClick={() => setEditingFoodLog(null)} className="p-2 hover:bg-slate-100 rounded-full text-slate-500"><X size={20} /></button>
+                 <h3 className={`text-xl font-bold ${t.textMain}`}>Edit Meal</h3>
+                 <button onClick={() => setEditingFoodLog(null)} className={`p-2 rounded-full ${t.textSecondary} hover:bg-gray-100 dark:hover:bg-slate-700`}><X size={20} /></button>
               </div>
               <div className="space-y-4 mb-6">
                  <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Food Name</label>
-                    <input type="text" value={editingFoodLog.foodName} onChange={(e) => setEditingFoodLog({...editingFoodLog, foodName: e.target.value})} className="w-full p-3 rounded-xl border border-slate-200 font-semibold text-slate-800" />
+                    <label className={`block text-xs font-medium mb-1 ${t.textSecondary}`}>Food Name</label>
+                    <input type="text" value={editingFoodLog.foodName} onChange={(e) => setEditingFoodLog({...editingFoodLog, foodName: e.target.value})} className={`w-full p-3 rounded-xl border font-semibold ${t.inputBg}`} />
                  </div>
                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-xs font-medium text-slate-500 mb-1">Calories</label>
-                        <input type="number" value={editingFoodLog.calories} onChange={(e) => setEditingFoodLog({...editingFoodLog, calories: parseInt(e.target.value) || 0})} className="w-full p-3 rounded-xl border border-slate-200 font-semibold text-slate-800" />
+                        <label className={`block text-xs font-medium mb-1 ${t.textSecondary}`}>Calories</label>
+                        <input type="number" value={editingFoodLog.calories} onChange={(e) => setEditingFoodLog({...editingFoodLog, calories: parseInt(e.target.value) || 0})} className={`w-full p-3 rounded-xl border font-semibold ${t.inputBg}`} />
                     </div>
                     <div>
-                        <label className="block text-xs font-medium text-slate-500 mb-1">Water (ml)</label>
-                        <input type="number" value={editingFoodLog.water} onChange={(e) => setEditingFoodLog({...editingFoodLog, water: parseInt(e.target.value) || 0})} className="w-full p-3 rounded-xl border border-slate-200 font-semibold text-slate-800" />
+                        <label className={`block text-xs font-medium mb-1 ${t.textSecondary}`}>Water (ml)</label>
+                        <input type="number" value={editingFoodLog.water} onChange={(e) => setEditingFoodLog({...editingFoodLog, water: parseInt(e.target.value) || 0})} className={`w-full p-3 rounded-xl border font-semibold ${t.inputBg}`} />
                     </div>
                     <div>
-                        <label className="block text-xs font-medium text-slate-500 mb-1">Protein (g)</label>
-                        <input type="number" value={editingFoodLog.protein} onChange={(e) => setEditingFoodLog({...editingFoodLog, protein: parseInt(e.target.value) || 0})} className="w-full p-3 rounded-xl border border-slate-200 font-semibold text-slate-800" />
+                        <label className={`block text-xs font-medium mb-1 ${t.textSecondary}`}>Protein (g)</label>
+                        <input type="number" value={editingFoodLog.protein} onChange={(e) => setEditingFoodLog({...editingFoodLog, protein: parseInt(e.target.value) || 0})} className={`w-full p-3 rounded-xl border font-semibold ${t.inputBg}`} />
                     </div>
                     <div>
-                        <label className="block text-xs font-medium text-slate-500 mb-1">Carbs (g)</label>
-                        <input type="number" value={editingFoodLog.carbs} onChange={(e) => setEditingFoodLog({...editingFoodLog, carbs: parseInt(e.target.value) || 0})} className="w-full p-3 rounded-xl border border-slate-200 font-semibold text-slate-800" />
+                        <label className={`block text-xs font-medium mb-1 ${t.textSecondary}`}>Carbs (g)</label>
+                        <input type="number" value={editingFoodLog.carbs} onChange={(e) => setEditingFoodLog({...editingFoodLog, carbs: parseInt(e.target.value) || 0})} className={`w-full p-3 rounded-xl border font-semibold ${t.inputBg}`} />
                     </div>
                     <div>
-                        <label className="block text-xs font-medium text-slate-500 mb-1">Fat (g)</label>
-                        <input type="number" value={editingFoodLog.fat} onChange={(e) => setEditingFoodLog({...editingFoodLog, fat: parseInt(e.target.value) || 0})} className="w-full p-3 rounded-xl border border-slate-200 font-semibold text-slate-800" />
+                        <label className={`block text-xs font-medium mb-1 ${t.textSecondary}`}>Fat (g)</label>
+                        <input type="number" value={editingFoodLog.fat} onChange={(e) => setEditingFoodLog({...editingFoodLog, fat: parseInt(e.target.value) || 0})} className={`w-full p-3 rounded-xl border font-semibold ${t.inputBg}`} />
                     </div>
                  </div>
               </div>
-              <button onClick={saveFoodEdit} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition">Save Changes</button>
+              <button onClick={saveFoodEdit} className={`w-full py-3 font-bold rounded-xl transition ${t.buttonPrimary}`}>Save Changes</button>
            </div>
         </div>
       )}
@@ -1486,45 +1669,45 @@ const App: React.FC = () => {
       {/* Edit Exercise Log Modal */}
       {editingExerciseLog && (
         <div className="absolute inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-           <div className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl animate-in fade-in zoom-in duration-200">
+           <div className={`rounded-3xl w-full max-w-sm p-6 shadow-2xl animate-in fade-in zoom-in duration-200 ${t.modalBg}`}>
               <div className="flex justify-between items-center mb-6">
-                 <h3 className="text-xl font-bold text-slate-800">Edit Workout</h3>
-                 <button onClick={() => setEditingExerciseLog(null)} className="p-2 hover:bg-slate-100 rounded-full text-slate-500"><X size={20} /></button>
+                 <h3 className={`text-xl font-bold ${t.textMain}`}>Edit Workout</h3>
+                 <button onClick={() => setEditingExerciseLog(null)} className={`p-2 rounded-full ${t.textSecondary} hover:bg-gray-100 dark:hover:bg-slate-700`}><X size={20} /></button>
               </div>
               <div className="space-y-4 mb-6">
                  <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Activity</label>
-                    <div className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-slate-600 flex items-center gap-2">
+                    <label className={`block text-xs font-medium mb-1 ${t.textSecondary}`}>Activity</label>
+                    <div className={`w-full p-3 rounded-xl font-semibold flex items-center gap-2 ${t.card}`}>
                        {getExerciseIcon(editingExerciseLog.activityName)}
-                       {editingExerciseLog.activityName}
+                       <span className={t.textMain}>{editingExerciseLog.activityName}</span>
                     </div>
                  </div>
                  <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Duration (mins)</label>
-                    <input type="number" value={editingExerciseLog.durationMinutes} onChange={(e) => setEditingExerciseLog({...editingExerciseLog, durationMinutes: parseInt(e.target.value) || 0})} className="w-full p-3 rounded-xl border border-slate-200 font-semibold text-slate-800" />
+                    <label className={`block text-xs font-medium mb-1 ${t.textSecondary}`}>Duration (mins)</label>
+                    <input type="number" value={editingExerciseLog.durationMinutes} onChange={(e) => setEditingExerciseLog({...editingExerciseLog, durationMinutes: parseInt(e.target.value) || 0})} className={`w-full p-3 rounded-xl border font-semibold ${t.inputBg}`} />
                  </div>
                  <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Calories Burned</label>
-                    <input type="number" value={editingExerciseLog.caloriesBurned} onChange={(e) => setEditingExerciseLog({...editingExerciseLog, caloriesBurned: parseInt(e.target.value) || 0})} className="w-full p-3 rounded-xl border border-slate-200 font-semibold text-slate-800" />
+                    <label className={`block text-xs font-medium mb-1 ${t.textSecondary}`}>Calories Burned</label>
+                    <input type="number" value={editingExerciseLog.caloriesBurned} onChange={(e) => setEditingExerciseLog({...editingExerciseLog, caloriesBurned: parseInt(e.target.value) || 0})} className={`w-full p-3 rounded-xl border font-semibold ${t.inputBg}`} />
                  </div>
               </div>
-              <button onClick={saveExerciseEdit} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition">Save Changes</button>
+              <button onClick={saveExerciseEdit} className={`w-full py-3 font-bold rounded-xl transition ${t.buttonPrimary}`}>Save Changes</button>
            </div>
         </div>
       )}
 
       {isSettingsOpen && (
           <div className="absolute inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-              <div className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto">
+              <div className={`rounded-3xl w-full max-w-sm p-6 shadow-2xl animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto ${t.modalBg}`}>
                   <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Sliders className="text-indigo-600" size={24} /> Customize Plan</h3>
-                      <button onClick={() => setIsSettingsOpen(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-500"><X size={20} /></button>
+                      <h3 className={`text-xl font-bold flex items-center gap-2 ${t.textMain}`}><Sliders className={theme === 'neon' ? 'text-neon-pink' : 'text-indigo-600'} size={24} /> Customize Plan</h3>
+                      <button onClick={() => setIsSettingsOpen(false)} className={`p-2 rounded-full ${t.textSecondary} hover:bg-gray-100 dark:hover:bg-slate-700`}><X size={20} /></button>
                   </div>
                   
                   {/* Coach Persona Section */}
-                  <div className="mb-8 flex flex-col items-center border-b border-slate-100 pb-6">
+                  <div className={`mb-8 flex flex-col items-center border-b pb-6 ${theme === 'neon' ? 'border-gray-800' : 'border-slate-100 dark:border-slate-700'}`}>
                       <label className="relative group cursor-pointer mb-3">
-                          <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-indigo-100 shadow-md">
+                          <div className={`w-24 h-24 rounded-full overflow-hidden border-4 shadow-md ${theme === 'neon' ? 'border-neon-green' : 'border-indigo-100 dark:border-slate-600'}`}>
                              <img src={tempCoachImage} alt="Coach Avatar" className="w-full h-full object-cover" />
                           </div>
                           <div className="absolute inset-0 bg-black/30 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-200">
@@ -1537,77 +1720,122 @@ const App: React.FC = () => {
                             type="text" 
                             value={tempCoachName} 
                             onChange={(e) => setTempCoachName(e.target.value)}
-                            className="text-center text-lg font-bold text-slate-800 border-b-2 border-transparent hover:border-slate-200 focus:border-indigo-500 focus:outline-none bg-transparent w-auto min-w-[100px] transition-colors"
+                            className={`text-center text-lg font-bold border-b-2 border-transparent hover:border-slate-200 focus:outline-none bg-transparent w-auto min-w-[100px] transition-colors ${theme === 'neon' ? 'text-neon-pink focus:border-neon-pink' : 'text-slate-800 focus:border-indigo-500 dark:text-slate-100'}`}
                             placeholder="Coach Name"
                           />
-                          <Edit2 size={14} className="text-slate-400" />
+                          <Edit2 size={14} className={t.textSecondary} />
                       </div>
-                      <p className="text-xs text-slate-400 mt-1">Tap image to upload your pet!</p>
+                      <p className={`text-xs mt-1 ${t.textMuted}`}>Tap image to upload your pet!</p>
                   </div>
 
                   {settingError && <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-xl flex gap-2 items-center"><AlertTriangle size={16} />{settingError}</div>}
+                  
+                  {/* Theme Selector */}
                   <div className="mb-6">
-                      <label className="block text-sm font-medium text-slate-600 mb-2">Current Weight (lbs)</label>
+                      <label className={`block text-sm font-medium mb-3 ${t.textSecondary}`}>App Theme</label>
+                      <div className="grid grid-cols-3 gap-2">
+                          <button 
+                             onClick={() => setTempTheme('light')} 
+                             className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition ${tempTheme === 'light' ? 'bg-indigo-50 border-indigo-500 text-indigo-700' : 'bg-slate-50 border-slate-200 text-slate-500 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-300'}`}
+                          >
+                             <Monitor size={20} />
+                             <span className="text-xs font-bold">Light</span>
+                          </button>
+                          <button 
+                             onClick={() => setTempTheme('dark')} 
+                             className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition ${tempTheme === 'dark' ? 'bg-slate-700 border-indigo-400 text-white' : 'bg-slate-50 border-slate-200 text-slate-500 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-300'}`}
+                          >
+                             <Moon size={20} />
+                             <span className="text-xs font-bold">Dark</span>
+                          </button>
+                          <button 
+                             onClick={() => setTempTheme('neon')} 
+                             className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition ${tempTheme === 'neon' ? 'bg-black border-neon-pink text-neon-pink shadow-[0_0_5px_rgba(255,0,255,0.5)]' : 'bg-slate-50 border-slate-200 text-slate-500 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-300'}`}
+                          >
+                             <Zap size={20} />
+                             <span className="text-xs font-bold">Neon</span>
+                          </button>
+                      </div>
+                  </div>
+
+                  <div className="mb-6">
+                      <label className={`block text-sm font-medium mb-2 ${t.textSecondary}`}>Current Weight (lbs)</label>
                       <div className="relative">
-                        <input type="number" value={tempWeight} onChange={(e) => setTempWeight(e.target.value)} placeholder="0" className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-lg font-semibold text-slate-800" />
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">lbs</div>
+                        <input type="number" value={tempWeight} onChange={(e) => setTempWeight(e.target.value)} placeholder="0" className={`w-full p-4 rounded-2xl focus:outline-none focus:ring-2 text-lg font-semibold ${t.inputBg}`} />
+                        <div className={`absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none ${t.textMuted}`}>lbs</div>
                       </div>
                   </div>
                   <div className="mb-6">
-                      <label className="block text-sm font-medium text-slate-600 mb-3">Your Goal</label>
+                      <label className={`block text-sm font-medium mb-3 ${t.textSecondary}`}>Your Goal</label>
                       <div className="grid grid-cols-1 gap-3">
-                          <button onClick={() => setTempGoalType(GoalType.LOSE_WEIGHT)} className={`flex items-center gap-3 p-4 rounded-2xl border transition ${tempGoalType === GoalType.LOSE_WEIGHT ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-slate-200 hover:bg-slate-50'}`}>
-                             <div className={`p-2 rounded-full ${tempGoalType === GoalType.LOSE_WEIGHT ? 'bg-indigo-200 text-indigo-700' : 'bg-slate-100 text-slate-400'}`}><TrendingDown size={20}/></div>
-                             <div className="text-left"><div className={`font-semibold ${tempGoalType === GoalType.LOSE_WEIGHT ? 'text-indigo-900' : 'text-slate-700'}`}>Lose Weight</div><div className="text-xs text-slate-400">Caloric deficit to burn fat</div></div>
+                          <button onClick={() => setTempGoalType(GoalType.LOSE_WEIGHT)} className={`flex items-center gap-3 p-4 rounded-2xl border transition ${tempGoalType === GoalType.LOSE_WEIGHT ? (theme === 'neon' ? 'border-neon-green bg-gray-900 ring-1 ring-neon-green' : 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500 dark:bg-indigo-900/30') : (theme === 'neon' ? 'border-gray-700 hover:bg-gray-800' : 'border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-700')}`}>
+                             <div className={`p-2 rounded-full ${tempGoalType === GoalType.LOSE_WEIGHT ? (theme === 'neon' ? 'bg-black text-neon-green' : 'bg-indigo-200 text-indigo-700') : (theme === 'neon' ? 'bg-gray-800 text-gray-400' : 'bg-slate-100 text-slate-400 dark:bg-slate-600')}`}><TrendingDown size={20}/></div>
+                             <div className="text-left"><div className={`font-semibold ${tempGoalType === GoalType.LOSE_WEIGHT ? (theme === 'neon' ? 'text-neon-green' : 'text-indigo-900 dark:text-indigo-100') : t.textMain}`}>Lose Weight</div><div className={`text-xs ${t.textMuted}`}>Caloric deficit to burn fat</div></div>
                           </button>
-                          <button onClick={() => setTempGoalType(GoalType.MAINTAIN)} className={`flex items-center gap-3 p-4 rounded-2xl border transition ${tempGoalType === GoalType.MAINTAIN ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-slate-200 hover:bg-slate-50'}`}>
-                             <div className={`p-2 rounded-full ${tempGoalType === GoalType.MAINTAIN ? 'bg-indigo-200 text-indigo-700' : 'bg-slate-100 text-slate-400'}`}><Minus size={20}/></div>
-                             <div className="text-left"><div className={`font-semibold ${tempGoalType === GoalType.MAINTAIN ? 'text-indigo-900' : 'text-slate-700'}`}>Maintain Weight</div><div className="text-xs text-slate-400">Balance intake with burn</div></div>
+                          <button onClick={() => setTempGoalType(GoalType.MAINTAIN)} className={`flex items-center gap-3 p-4 rounded-2xl border transition ${tempGoalType === GoalType.MAINTAIN ? (theme === 'neon' ? 'border-neon-blue bg-gray-900 ring-1 ring-neon-blue' : 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500 dark:bg-indigo-900/30') : (theme === 'neon' ? 'border-gray-700 hover:bg-gray-800' : 'border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-700')}`}>
+                             <div className={`p-2 rounded-full ${tempGoalType === GoalType.MAINTAIN ? (theme === 'neon' ? 'bg-black text-neon-blue' : 'bg-indigo-200 text-indigo-700') : (theme === 'neon' ? 'bg-gray-800 text-gray-400' : 'bg-slate-100 text-slate-400 dark:bg-slate-600')}`}><Minus size={20}/></div>
+                             <div className="text-left"><div className={`font-semibold ${tempGoalType === GoalType.MAINTAIN ? (theme === 'neon' ? 'text-neon-blue' : 'text-indigo-900 dark:text-indigo-100') : t.textMain}`}>Maintain Weight</div><div className={`text-xs ${t.textMuted}`}>Balance intake with burn</div></div>
                           </button>
-                          <button onClick={() => setTempGoalType(GoalType.GAIN_MUSCLE)} className={`flex items-center gap-3 p-4 rounded-2xl border transition ${tempGoalType === GoalType.GAIN_MUSCLE ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500' : 'border-slate-200 hover:bg-slate-50'}`}>
-                             <div className={`p-2 rounded-full ${tempGoalType === GoalType.GAIN_MUSCLE ? 'bg-indigo-200 text-indigo-700' : 'bg-slate-100 text-slate-400'}`}><TrendingUp size={20}/></div>
-                             <div className="text-left"><div className={`font-semibold ${tempGoalType === GoalType.GAIN_MUSCLE ? 'text-indigo-900' : 'text-slate-700'}`}>Gain Muscle</div><div className="text-xs text-slate-400">Surplus for hypertrophy</div></div>
+                          <button onClick={() => setTempGoalType(GoalType.GAIN_MUSCLE)} className={`flex items-center gap-3 p-4 rounded-2xl border transition ${tempGoalType === GoalType.GAIN_MUSCLE ? (theme === 'neon' ? 'border-neon-pink bg-gray-900 ring-1 ring-neon-pink' : 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500 dark:bg-indigo-900/30') : (theme === 'neon' ? 'border-gray-700 hover:bg-gray-800' : 'border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-700')}`}>
+                             <div className={`p-2 rounded-full ${tempGoalType === GoalType.GAIN_MUSCLE ? (theme === 'neon' ? 'bg-black text-neon-pink' : 'bg-indigo-200 text-indigo-700') : (theme === 'neon' ? 'bg-gray-800 text-gray-400' : 'bg-slate-100 text-slate-400 dark:bg-slate-600')}`}><TrendingUp size={20}/></div>
+                             <div className="text-left"><div className={`font-semibold ${tempGoalType === GoalType.GAIN_MUSCLE ? (theme === 'neon' ? 'text-neon-pink' : 'text-indigo-900 dark:text-indigo-100') : t.textMain}`}>Gain Muscle</div><div className={`text-xs ${t.textMuted}`}>Surplus for hypertrophy</div></div>
                           </button>
                       </div>
                   </div>
                   {tempGoalType === GoalType.LOSE_WEIGHT && (
-                      <div className="mb-6 p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 animate-in slide-in-from-top-2">
+                      <div className={`mb-6 p-4 rounded-2xl border animate-in slide-in-from-top-2 ${theme === 'neon' ? 'bg-gray-900 border-neon-green' : 'bg-indigo-50/50 border-indigo-100 dark:bg-slate-700 dark:border-slate-600'}`}>
                           <div className="grid grid-cols-2 gap-4">
                               <div>
-                                  <label className="block text-xs font-medium text-slate-500 mb-1">Amount to Lose</label>
+                                  <label className={`block text-xs font-medium mb-1 ${t.textSecondary}`}>Amount to Lose</label>
                                   <div className="relative">
-                                    <input type="number" value={tempTargetLbs} onChange={e => setTempTargetLbs(e.target.value)} className="w-full p-3 rounded-xl border border-slate-200 text-sm font-semibold" placeholder="Lbs" />
-                                    <span className="absolute right-3 top-3 text-xs text-slate-400">lbs</span>
+                                    <input type="number" value={tempTargetLbs} onChange={e => setTempTargetLbs(e.target.value)} className={`w-full p-3 rounded-xl border text-sm font-semibold ${t.inputBg}`} placeholder="Lbs" />
+                                    <span className={`absolute right-3 top-3 text-xs ${t.textMuted}`}>lbs</span>
                                   </div>
                               </div>
                               <div>
-                                  <label className="block text-xs font-medium text-slate-500 mb-1">Timeframe</label>
+                                  <label className={`block text-xs font-medium mb-1 ${t.textSecondary}`}>Timeframe</label>
                                   <div className="relative">
-                                    <input type="number" value={tempTargetMonths} onChange={e => setTempTargetMonths(e.target.value)} className="w-full p-3 rounded-xl border border-slate-200 text-sm font-semibold" placeholder="Months" />
-                                    <span className="absolute right-3 top-3 text-xs text-slate-400">mos</span>
+                                    <input type="number" value={tempTargetMonths} onChange={e => setTempTargetMonths(e.target.value)} className={`w-full p-3 rounded-xl border text-sm font-semibold ${t.inputBg}`} placeholder="Months" />
+                                    <span className={`absolute right-3 top-3 text-xs ${t.textMuted}`}>mos</span>
                                   </div>
                               </div>
                           </div>
-                          <p className="text-[10px] text-indigo-400 mt-2 flex items-center gap-1"><Target size={10} /> Max recommended rate: 5 lbs/month</p>
+                          <p className="text-[10px] mt-2 flex items-center gap-1 text-indigo-400"><Target size={10} /> Max recommended rate: 5 lbs/month</p>
                       </div>
                   )}
                   <div className="mb-8">
-                      <label className="block text-sm font-medium text-slate-600 mb-3">Frequent Activities</label>
+                      <label className={`block text-sm font-medium mb-3 ${t.textSecondary}`}>Frequent Activities</label>
                       <div className="grid grid-cols-3 gap-2">
                           {AVAILABLE_SPORTS.map((sport) => {
                               const isSelected = tempSports.includes(sport.id);
                               return (
-                                  <button key={sport.id} onClick={() => toggleSport(sport.id)} className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-200 ${isSelected ? 'bg-indigo-50 border-indigo-500 text-indigo-700 shadow-sm' : 'bg-white border-slate-100 text-slate-500 hover:bg-slate-50'}`}>
-                                      <div className={`mb-1 ${isSelected ? 'text-indigo-600' : 'text-slate-400'}`}>{sport.icon}</div>
+                                  <button key={sport.id} onClick={() => toggleSport(sport.id)} className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-200 ${isSelected ? (theme === 'neon' ? 'bg-gray-800 border-neon-pink text-neon-pink' : 'bg-indigo-50 border-indigo-500 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300') : (theme === 'neon' ? 'bg-black border-gray-700 text-gray-500' : 'bg-white border-slate-100 text-slate-500 hover:bg-slate-50 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-400')}`}>
+                                      <div className={`mb-1 ${isSelected ? (theme === 'neon' ? 'text-neon-pink' : 'text-indigo-600') : (theme === 'neon' ? 'text-gray-500' : 'text-slate-400')}`}>{sport.icon}</div>
                                       <span className="text-[10px] font-semibold">{sport.id}</span>
                                   </button>
                               );
                           })}
                       </div>
                   </div>
+                  
+                  {/* Data & Sharing Section */}
+                  <div className="mb-8">
+                      <label className={`block text-sm font-medium mb-3 ${t.textSecondary}`}>Data & Sharing</label>
+                      <div className="flex gap-3">
+                          <button onClick={exportCSV} className={`flex-1 py-3 px-4 rounded-xl border flex items-center justify-center gap-2 transition ${theme === 'neon' ? 'bg-black border-neon-blue text-neon-blue hover:bg-gray-900' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-300'}`}>
+                              <Download size={18} />
+                              <span className="text-sm font-bold">Export CSV</span>
+                          </button>
+                          <button onClick={shareProgress} className={`flex-1 py-3 px-4 rounded-xl border flex items-center justify-center gap-2 transition ${theme === 'neon' ? 'bg-black border-neon-pink text-neon-pink hover:bg-gray-900' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-300'}`}>
+                              <Share size={18} />
+                              <span className="text-sm font-bold">Share</span>
+                          </button>
+                      </div>
+                  </div>
+
                   <div className="flex gap-3">
-                      <button onClick={() => setIsSettingsOpen(false)} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold rounded-xl transition">Cancel</button>
-                      <button onClick={saveSettings} className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-lg shadow-indigo-200 transition">Save</button>
+                      <button onClick={() => setIsSettingsOpen(false)} className={`flex-1 py-3 font-semibold rounded-xl transition ${t.buttonSecondary}`}>Cancel</button>
+                      <button onClick={saveSettings} className={`flex-1 py-3 font-semibold rounded-xl transition ${t.buttonPrimary}`}>Save</button>
                   </div>
               </div>
           </div>

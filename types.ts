@@ -59,6 +59,8 @@ export enum GoalType {
   GAIN_MUSCLE = 'GAIN_MUSCLE',
 }
 
+export type Theme = 'light' | 'dark' | 'neon';
+
 export interface DailyGoals {
   calories: number;
   protein: number;
