@@ -5,7 +5,7 @@ import {
   PieChart,
   Pie
 } from 'recharts';
-import { DailyGoals, Theme } from '../types';
+import { DailyGoals, Theme } from '../../types';
 
 interface CalorieCardProps {
   consumed: number;
