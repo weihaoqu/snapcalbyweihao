@@ -1,5 +1,6 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
-import { FoodAnalysisResult } from "../types";
+import { FoodAnalysisResult, ModelName } from "../types";
 
 // Initialize the Gemini client
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -11,13 +12,15 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
  * @param frequentSports Optional list of user's preferred sports to prioritize in suggestions
  * @param analysisType Whether to analyze as general 'food' or specifically a 'drink'
  * @param userWeight The user's weight in lbs for personalized burn calculations
+ * @param modelName The Gemini model to use for analysis
  */
 export const analyzeFoodImage = async (
   base64Image: string, 
   mimeType: string, 
   frequentSports: string[] = [],
   analysisType: 'food' | 'drink' = 'food',
-  userWeight: number = 150
+  userWeight: number = 150,
+  modelName: ModelName = 'gemini-2.5-flash'
 ): Promise<FoodAnalysisResult> => {
   try {
     const sportsContext = frequentSports.length > 0 
@@ -58,7 +61,7 @@ export const analyzeFoodImage = async (
     }
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: modelName,
       contents: {
         parts: [
           {

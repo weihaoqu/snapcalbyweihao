@@ -1,5 +1,4 @@
 
-
 export interface MacroData {
   name: string;
   value: number;
@@ -60,6 +59,8 @@ export enum GoalType {
 }
 
 export type Theme = 'light' | 'dark' | 'neon';
+
+export type ModelName = 'gemini-2.5-flash' | 'gemini-3-flash-preview';
 
 export interface DailyGoals {
   calories: number;
